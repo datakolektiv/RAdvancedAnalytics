@@ -1,33 +1,39 @@
 ---
-title: ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session01
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session01"
 author:
 - name: Goran S. Milovanović, PhD
   affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
-abstract: 
+abstract: null
 output:
+  html_document:
+    toc: true
+    toc_depth: 5
   html_notebook:
     code_folding: show
     theme: spacelab
-    toc: yes
-    toc_float: yes
+    toc: true
+    toc_float: true
     toc_depth: 5
-  html_document:
-    toc: yes
-    toc_depth: 5
+  pdf_document:
+    toc: true
+    toc_depth: '5'
 ---
 
 ![](_img/DK_Logo_100.png)
 
 ***
-# Session 01: Feeling R: Basics + Intuitive Understanding of R 
+# Module 1: Bootcamp for R Programming
+
+## Week 01: Technical Requirements, Installations, and Basics
+
 **Feedback** should be send to `goran.milovanovic@datakolektiv.com`. 
-These notebooks accompany the Intro to Data Science: Non-Technical Background course 2020/21.
+These notebooks accompany the ADVANCED ANALYST - Foundations for Advanced Data Analytics in R [DataKolektiv](http://www.datakolektiv.com/app_direct/DataKolektivServer/) training.
 
 ***
 
 ### Welcome to R!
 
-![](_img/Rlogo.png)
+![](_img/AdvAnalyticsR2024_Banner.jpeg)
 
 ### What do we want to do today?
 
@@ -35,7 +41,66 @@ Our goal in `Session 01` is to develop and intuition of R, and *a feeling for* t
 
 ### 0. Prerequisits.
 
-None. There is an R console open in front of your eyes and you can reach your machine's keyboard.
+None. You have your machine in front of you, and that machine is running any of the following operative systems:
+
+- Windows 10 (earlier versions are fine too)
+- Linux Ubuntu/Debian
+- macOS
+
+### 0.1 Install R
+
+**In case of any problems during the installation of R and RStudio, do not worry: we will review the procedure completelly in our first session.**
+
+**NOTE.** Please take care to install **the latest available versions**. At the time of this writing, those were:
+
+- Programming language R: `R-4.3.3`, [available here for Windows](https://cran.r-project.org/bin/windows/base/), [here for Linux](https://docs.posit.co/resources/install-r-source/), and [here for macOS](https://cran.r-project.org/bin/macosx/)
+- RStudio Desktop: `RStudio Desktop 1.3.1093`, available [here](https://rstudio.com/products/rstudio/download/).
+
+
+Please follow the instructions provided here: 
+
+[Earth Data Analytics Online Certificate, 
+Lesson 1. Install & Set Up R and RStudio on Your Computer](https://www.earthdatascience.org/courses/earth-analytics/document-your-science/setup-r-rstudio/)
+
+Essentially, there are two installation steps: 
+
+- install R (the programming language)
+- install RStudio (your IDE, i.e. your working environment, where you write code, inspect data, etc.)
+
+**For Windows users:** [Video Instructions](https://www.youtube.com/watch?v=9-RrkJQQYqY&t=262s)
+
+**For Mac users:** [Video Instructions](https://www.youtube.com/watch?v=Y20P3u3c_1c)
+
+**For Linux users:** 
+
+- [Install R Instructions](https://www.digitalocean.com/community/tutorials/how-to-install-r-on-ubuntu-18-04-quickstart)
+- [Install RStudio Instructions](https://linuxconfig.org/how-to-install-rstudio-on-ubuntu-20-04-focal-fossa-linux)
+
+
+### 0.2 Organization
+
+It is of essential importance to keep your files and folders neatly organized. That is not important only to be able to follow this course: all successful Data Scientists suffer a bit from something similar to OCD (Obsessive compulsive disorder) when it comes to organizing their data and code into directories and code repositories.
+
+For each new step that I make in Data Science, for each new project, my approach to organization is the following:
+
+- I start a new directory which bears the project name (**NOTE.** Avoid using empty spaces, " ", in naming your files and directories!);
+- In that directory, I make three new directories:
+  - `_data` - where I intend to keep the raw data,
+  - `_analytics` - where I intend to keep the processed data,
+  - `_results` - where I intend to keep the outputs of my work, and
+  - `_img` - where I intend to keep any images that were produced in the course of my work in the project.
+  
+I suggest that, at least in the beginning, you use the same schema to organize your directories. Later on you can decide upon the exact form of organization that you find to be most suitable to you.
+
+
+### 0.3 Intro Readings and Videos
+
+- [r-project.org: What is R?](https://www.r-project.org/about.html)
+- [tutorialpoints.com: R Tutorial](https://www.tutorialspoint.com/r/index.htm) - no need to go through this material right now, just take a look at it and maybe invest time to read the first few chapters
+- [freecodecamp.org: R programming language explained](https://www.freecodecamp.org/news/r-programming-language-explained/)
+- [Getting started with R and RStudio](https://www.youtube.com/watch?v=lVKMsaWju8w): **please** do not skip this video!
+- [Wikipedia: R](https://en.wikipedia.org/wiki/R_(programming_language))
+
 
 ### 1. Navigating the work environment: where am I?
 
@@ -59,10 +124,6 @@ list.files(getwd())
 
 Take a look at `list.files(getwd())` carefully. We have already learned that `getwd()` is an R function. That function takes **no input**, and returns one **output**: the path towards the current working directory. Now, `list.files(getwd())` *composes* two R functions: `getwd()` is the first one, and `list.files()` is the second one. The later takes **one input** - that being the results of `getwd()` - and returns **one output**, namely the list of files found in the directory on the path returned by a previous `getwd()` call. In programming, R represents and instance of something called a **functional programming language**. Right now, this means very little to you, so we can simply say just the following: you will be using a tons of functions in R and combine them in crazy ways. And that is why it is important to develop an intuition about functions since the very beginning.
 
-**WARNING.** I can code, but I cannot draw. This is how I envision functions and their composition:
-
-![](../_img/S01_01_Functions.jpeg)
-
 Ok, `list.files(getwd())` returned a list of *files* found under our working directory that we have in turn obtained from `getwd()`. There is more: we know that the current working directory is 
 
 ``` {r echo = T}
@@ -73,10 +134,10 @@ and now we ask: what is found in `C:/Users/goran/___DataKolektiv/__EDU/01_IntroD
 
 ``` {r echo = T}
 # THIS IS A COMMENT: This chunk of code makes use of the `list.files()` R function
-list.files('C:/Users/goran/___DataKolektiv/__EDU/01_IntroDataScience_Non-Tech/_Code/')
+list.files('C:/Users/goran/___DataKolektiv/__EDU/RAdvancedAnalytics/RAdvancedAnalytics')
 ```
 
-Ok, we find one file (e.g. `_Code.Rproj`) and many directories (`img`, `IntroDataScience_NonTech_S00`, `IntroDataScience_NonTech_S01`, etc.). Now, imagine I want to work in `C:/Users/goran/___DataKolektiv/__EDU/01_IntroDataScience_Non-Tech/_Code/` instead of working in:
+Now, imagine I want to work in `C:/Users/goran/___DataKolektiv/__EDU/RAdvancedAnalytics/` instead of working in:
 
 ``` {r echo = T}
 getwd()
@@ -85,7 +146,7 @@ getwd()
 How does one change a working directory in R? We have a function (of course) to do that:
 
 ``` {r echo = T}
-setwd('C:/Users/goran/___DataKolektiv/__EDU/01_IntroDataScience_Non-Tech/_Code/')
+setwd('C:/Users/goran/___DataKolektiv/__EDU/RAdvancedAnalytics/')
 ```
 
 Now, we need to be very careful because we are working from R Markdown: type `getwd()` in the console and take a look at its output. Now execute the following chunk of R code here:
@@ -93,6 +154,7 @@ Now, we need to be very careful because we are working from R Markdown: type `ge
 ``` {r echo = T}
 getwd()
 ```
+
 So, nothing changed. The moral of the story: changing a directory *inside an R Markdown code chunk* will change the working directory only until the code in the chunk executes, but it will not change the working directory for any subsequent chunks. If we did this in a console, or in an R script - and both are different from executing the code from an R Markdown Notebook - once called, `setwd()` would change the working directory until something else changes it again. That is why R Markdown complained after out `setwd()` call.
 
 
@@ -130,7 +192,7 @@ print(word2)
 ```
 Ok, that is not what we wanted, but let's learn a few things. We have instantiated one variable in R, `word1`, and then another one, `word2`. By using the R *assignment operator* - `<-` - we have assigned the character value of `"Hello"` to `word1` and the value of `"World"` to `word2`. Then we have called the function `print()` twice to print out the values of the two variables.
 
-**NOTE.** You can use `=` as an assingment operator in R, of course, try: `word = "Hello"`, for example. However, **we do not do it by convention in R: we prefer to use the `<-` assingment operator**. Use `=` instead and you will easily confuse any mature R programmer that you eventually need to work with. Don't do it.
+**NOTE.** You can use `=` as an assignment operator in R, of course, try: `word = "Hello"`, for example. However, **we do not do it by convention in R: we prefer to use the `<-` assignment operator**. Use `=` instead and you will easily confuse any mature R programmer that you eventually need to work with. Don't do it.
 
 Let's get closer to the result that we were looking for:
 
@@ -177,8 +239,7 @@ paste(
 
 What have we learned: that the `sep` argument of `paste` has a *default* value of `" "` - an empty space. Only when we have explicitly instructed `paste()` to use `sep = ""` - an empty string - the results was what we have looked for. As I told you: programming languages are very strict when it comes to communication, they have their inner rules and logic, and one needs to learn and understand that logic completely (or almost completely) to be in full command of a programming language. Also, we have learned that some arguments in some R functions have *default values*: if we do not specify a value of the argument that we want to use, the function will use its default value. 
 
-### 2. Lists, arrays, and a bit more complicated functions.
-
+### 3. Lists, arrays, and a bit more complicated functions.
 
 What R functions have we seen thus far? Let's see: `print()`, `paste()`, `list.files()`, `getwd()`, `setwd()`. There are tons of them, I assure you. Take a look at this one, for example:
 
@@ -186,6 +247,7 @@ What R functions have we seen thus far? Let's see: `print()`, `paste()`, `list.f
 word <- 'Hello World'
 strsplit(word, split = " ")
 ```
+
 Ok, the meaning of `strsplit()` is, obviously `string split`, and it somehow breaks the strings in pieces, obviously using the `split` argument to learn what separator do we want to use to decompose a string, but... But the output looks strange, doesn't it?
 
 What is `[[1]]`, and why does the result follows only after it and an additional `[1]`? This is so because `strsplit()` returns a **list**, which is a very important data type in R. Things in R - call them variables - have a data type associated. A thing can be an integer, or a real number, or perhaps a string (again, that data type is called `character` in R)... But they can also be a bit more complicated, like *arrays* and *lists*. Now, let's start with lists, very important in R. What is a list?
@@ -195,6 +257,7 @@ word <- 'Hello World'
 s <- strsplit(word, split = " ")
 class(s)
 ```
+
 Yes, I have assigned the output of `strsplit(word, split = " ")` to `s`, and then used the `class()` function to ask for a data type of `s` - and it is a list indeed. Let's `print(s)`:
 
 ``` {r echo = T}
@@ -226,7 +289,7 @@ Demystifying the `[1]` part of the `strsplit()` output - the one for which I've 
 - the `print(mySequence)` line is self-explanatory, and
 - from the output we can see that the indices found under square brackets (single! - they are array indices, not list indices) are simply the ordinal numbers of the first element of the `mySequence` array in each row of the ouput - nothing more than that. 
 
-That is exactly what happend in the `[1] "Hello" "World"` part of the output. Now, about those double square brackets, `[[` and `]]` that are used in lists; take a look at this:
+That is exactly what happened in the `[1] "Hello" "World"` part of the output. Now, about those double square brackets, `[[` and `]]` that are used in lists; take a look at this:
 
 ``` {r echo = T}
 myList <- list()
@@ -245,10 +308,6 @@ myList
 ```
 
 Do you now understand how list and array indices are used in the R output?
-
-**WARNING.** My drawing, again: this is how I envision the difference between lists and arrays in R.
-
-![](../_img/S01_02_Arrays_and_Lists.jpeg)
 
 Let me try to explain:
 
@@ -277,6 +336,7 @@ Of course. What else can I create?
 a <- numeric()
 a
 ```
+
 Ok, it is a `numeric` type of length(0). Now:
 
 ``` {r echo = T}
@@ -292,12 +352,14 @@ Wait:
 a <- character(5)
 a
 ```
+
 Ok, the empty string `""` is the default for creating character arrays with `character()`. I've been mentioning the word `length` for a while. Look:
 
 ``` {r echo= T}
 a <- c(1, 2, 3)
 length(a)
 ```
+
 Now we understand the R function `length()`: tell me how many elements there are in an array.
 **NOTE.** The `c()` function, of the most commonly used things in R, puts thing together in an array. Nothing else. 
 
@@ -343,6 +405,7 @@ What have we learned: there is a data type called `logical` in R (also known as 
 logic <- c(0,3,1,0)
 as.logical(logic)
 ```
+
 When converting numbers to logicals in R, `0` is always `FALSE`. Try `as.logical(-4)`, or `as.logical(3.14)` to make sure.
 
 Now, what if we want to maintain a collection of data of various types? Then lists come into play:
@@ -351,6 +414,7 @@ Now, what if we want to maintain a collection of data of various types? Then lis
 myList <- list(1, 2, "3", 4)
 print(myList)
 ```
+
 Now:
 
 - the list has four elements: `[[1]]`, `[[2]]`, `[[3]]`, and `[[4]]`;
@@ -392,7 +456,148 @@ lapply(myList, as.logical)
 
 Wait, what is the `NA` value in `[[3]]`? The third element of the `myList` list is a character, `"3"`. We asked `lapply()` to apply `as.logical()` to all members of `myList`. It did well for the numbers (all positive, so all `TRUE`), but it failed for `"3"` which is a character - and R does not know how to treat a character value under `as.logical` - should it be `TRUE` or `FALSE`. Since a conversion of that kind is not defined in R, it returned `NA`, short for `Not Available`. You will see `NA` used a lot in Data Science in R, anytime the value is, for some reason, *missing*.
 
-### 4. Our own R functions 
+### 4. Basic Decisions and Iterations in R
+
+#### 4.1 Introduction to For Loops in R
+
+For loops are a fundamental control flow tool in R that allow you to repeat a block of code a certain number of times. They are particularly useful when you need to perform repetitive tasks, like processing or analyzing each element in a vector, list, or data frame column.
+
+The basic syntax of a for loop in R is as follows:
+
+``` {r echo = TRUE, eval = FALSE}
+for (variable in sequence) {
+  # Code to execute for each element of the sequence
+}
+``` 
+
+- `variable` is a placeholder that takes on the value of each element in the sequence, one by one, as the loop iterates.
+- `sequence` is a vector or list that the loop will iterate over. It defines how many times the loop will execute.
+
+**Example 1: Looping Through a Vector**
+
+Let's start with a simple example where we use a for loop to print each number in a vector.
+
+``` {r echo = T}
+numbers <- 1:5
+for (num in numbers) {
+  print(num)
+}
+```
+
+This loop will print numbers 1 through 5, each on a new line.
+
+**Example 2: Summing Elements of a Vector**
+
+For loops can be used to perform more complex operations, such as summing the elements of a vector.
+
+``` {r echo = T}
+numbers <- 1:5
+sum <- 0
+for (num in numbers) {
+  sum <- sum + num
+}
+print(sum)
+```
+
+This loop calculates the sum of the numbers 1 through 5 and prints the result.
+
+**Example 3: Looping Through a List**
+
+You can also loop through each element of a list. This is useful for data structures that contain non-uniform elements.
+
+``` {r echo = T}
+my_list <- list("Hello", 42, TRUE)
+for (element in my_list) {
+  print(element)
+}
+```
+
+This loop will print each element of the list, regardless of its type.
+
+**Best Practices and Tips**
+
+1. **Predefine Output Containers**: If you're storing results from a loop, always predefine your container (e.g., vector, list) outside the loop to avoid inefficient memory usage and slowdowns.
+2. **Vectorization**: Before using a for loop, check if a vectorized function exists that can perform the operation more efficiently. R is optimized for vectorized operations.
+3. **Avoid Growing Objects in Loops**: Growing an object, like a vector or list, inside a loop can be very slow. Instead, allocate sufficient space before the loop starts.
+
+#### 4.2 `if... else` statements: introduction to decision making in R
+
+`if...else` statements are a cornerstone of programming, allowing you to execute different blocks of code based on certain conditions. In R, these statements enable conditional execution of code, making your scripts more dynamic and responsive to different data inputs.
+
+**Syntax of If...Else Statements**
+
+The basic syntax of an `if...else` statement in R is as follows:
+
+``` {r echo = T, eval = FALSE}
+if (condition) {
+  # Code to execute if condition is TRUE
+} else {
+  # Code to execute if condition is FALSE
+}
+```
+
+- `condition` is an expression that evaluates to TRUE or FALSE.
+- If the `condition` is `TRUE`, the code inside the if block executes. If the `condition` is `FALSE`, the code inside the else block executes.
+
+***Example 1: Basic If...Else Statement**
+
+Let's start with a simple example that checks if a number is positive.
+
+``` {r echo = T}
+number <- -2
+if (number > 0) {
+  print("The number is positive.")
+} else {
+  print("The number is not positive.")
+}
+```
+
+This script will print "The number is not positive." because -2 is not greater than 0.
+
+**Example 2: If...Else If...Else Statement**
+
+For more complex conditional logic, you can chain if statements using else if.
+
+``` {r echo = T}
+number <- 0
+if (number > 0) {
+  print("The number is positive.")
+} else if (number < 0) {
+  print("The number is negative.")
+} else {
+  print("The number is zero.")
+}
+```
+
+This script checks if a number is positive, negative, or zero, and prints an appropriate message.
+
+**Example 3: Nested If...Else Statements**
+
+You can also nest if...else statements within each other to check multiple conditions.
+
+```{r echo = TRUE}
+age <- 20
+if (age >= 18) {
+  print("You are an adult.")
+  if (age >= 65) {
+    print("You are eligible for senior benefits.")
+  } else {
+    print("You are not yet a senior.")
+  }
+} else {
+  print("You are not an adult.")
+}
+```
+
+This script checks if a person is an adult and then, if they are, further checks if they are a senior.
+
+**Best Practices and Tips**
+
+- Clarity Over Conciseness: Although R allows writing if...else statements in a single line, using multiple lines for complex conditions improves readability.
+- Use Braces: Always use braces {} even when the body contains only a single statement, to avoid confusion and potential bugs in more complex scripts.
+- `if...else` statements are essential for controlling the flow of execution in your R scripts, allowing you to handle various scenarios and data conditions effectively.
+
+### 5. Our own R functions 
 
 Remember how it started: I've told you that you should think of R functions simply as collections of R code that does something for us. For example, repetitive things: there is something that can be done with data, but the data can vary while what can be done to it remains the same - and then we need a function. It is a piece of code that always does one and the same thing over it *inputs*: the things that we pass to it. Say, we pass `3` and `4` to some R function called `muFun()` and we want to it to return the result of `3+4`, but we do not want to change it just to be able to do the same for `1` and `2`, or `1000` and `3.14`.
 
@@ -530,6 +735,7 @@ a[[1]] <- 5
 a[[2]] <- 7
 print(a)
 ```
+
 Ok, let' say this is a *simple list*: it has two elements, each element has one numeric in it. Now:
 
 ``` {r echo = T}
@@ -622,7 +828,7 @@ Enjoy this:
 "^"(5, 2) 
 ```
 
-### 5. `data.frame`
+### 6. `data.frame`
 
 Lists are not the only beings in R that can hold together things of different types.
 
@@ -685,51 +891,19 @@ myCities[ , c('lat', 'lon')]
 
 We will be learning **a lot** about `data.frames` in our future sessions. 
 
-### 6. The shape of things to come: beauty and simplicity
+### 7. Example: Rapid visualizations w. {ggplot2}
 
-#### 6.A Example: Interactive geo-visualization in 9 lines of code
-
-Now, allow me to show you how powerful R really is. How many lines of R code do I need to create an interactive map that singles out cities found in the `myCities` `data.frame` by markers that display information on them when clicked upon? Let's see:
-
-``` {r echo = T,  message = F, warning = F}
-# - Setup
-# - Install {leaflet} if not installed;
-# - install.packages('leaflet')
-# - {dplyr} should be present already
-
-# - load R packages
-library(leaflet)
-library(dplyr)
-# - Execute
-leaflet(width = "100%") %>%
-  addTiles() %>%
-  addMarkers(data = myCities,
-             popup = (paste0('<b>City: ', myCities$city, '</b><br>',
-                            '<b>Country: ', myCities$country, '</b><br>',
-                            '<b>Population: ', myCities$population, '</b>'))
-  )
-```
-
-That would be nine (9) lines of code, not counting the comments of course. 
-
-#### 6.B Example: Rapid visualizations w. {ggplot2}
-
-A famous dataset used in Data Science trainings, `mtcars`, enters, together with the industrial standard visualization library `{ggplot2}`:
+A famous dataset used in Data Science training, `mtcars`, enters, together with the industrial standard visualization library `{ggplot2}`:
 
 ``` {r echo = T, message = F, warning = F}
-# - install {ggplot2} if not installed
-# - install.packages('ggplot2')
-# - install {ggrepel} if not installed
-# - install.packages('ggrepel')
 library(ggplot2)
-library(ggrepel)
 data(mtcars)
 mtcars$model <- row.names(mtcars)
 mtcars$gear <- as.factor(mtcars$gear)
 print(mtcars)
 ```
 
-``` {r echo = T}
+``` {r echo = T, warning = FALSE}
 ggplot(data = mtcars, 
        aes(x = mpg, y = qsec,
            label = model, 
@@ -737,13 +911,43 @@ ggplot(data = mtcars,
            color = gear)) + 
   geom_point() + 
   scale_color_discrete() + 
-  geom_smooth(method = "lm", 
+  geom_smooth(formula ='y~x',
+              method = "lm", 
               size = .15) + 
-  geom_text_repel(size = 3) + 
   ggtitle("mpg vs. qsec in the mtcars dataset, per gear.") + 
   theme_bw() + 
   theme(plot.title = element_text(size = 10)) + 
   theme(panel.border = element_blank())
+```
+
+Maps, perhaps?
+
+``` {r echo = T,  message = F, warning = F}
+# - Setup
+# - Install {leaflet} if not installed;
+# - install.packages('leaflet')
+
+# - load R packages
+library(leaflet)
+# - data
+df <- data.frame(lat = runif(200, min = -90, max = 90), 
+                 long = runif(200, min = -180, max = 180))
+df %>%
+  leaflet( width = 900) %>%
+  addTiles() %>%
+  addMarkers(clusterOptions = markerClusterOptions(), popup = "Hi")
+```
+
+
+``` {r echo = T,  message = F, warning = F}
+# - Execute
+leaflet(width = "100%") |>
+  addTiles() |>
+  addMarkers(data = myCities,
+             popup = (paste0('<b>City: ', myCities$city, '</b><br>',
+                            '<b>Country: ', myCities$country, '</b><br>',
+                            '<b>Population: ', myCities$population, '</b>'))
+  )
 ```
 
 But if you want to be sure that you can use this power in a responsible way, you need to get along with vectors, lists, nested lists, functions, code vectorization, and many other things as well.
@@ -752,29 +956,22 @@ Stay tuned. We didn't even start the dance yet.
 
 ### Further Readings
 
-- [Chapter 1 Starting out in R from Introduction to R, version](https://monashdatafluency.github.io/r-intro-2/starting-out-in-r.html#saving-code-in-an-r-script)
-- [Chapter Data Types and Structures from Programming with R](https://swcarpentry.github.io/r-novice-inflammation/13-supp-data-structures/)
-- [Chapter 4 Workflow: basics from R for Data Science](https://r4ds.had.co.nz/workflow-basics.html)
-
-### Highly Recommended To Do
-
-- Read [Chapters 1 to 3 from R for Data Science, Hadley Wickham & Garrett Grolemund](https://r4ds.had.co.nz/)
-- Read [Chapters 1 to 5 from Norman Matloff’s The Art of R Programming](https://www.google.com/search?client=firefox-b-d&channel=trow2&sxsrf=ALeKk03T_qLCMzRICYWj5UHqFBHnvfV6Uw%3A1607220795553&ei=Oz7MX8aeIYK6kwWc5JbgAw&q=Norman+Matloff+The+Art+of+R+Programming+pdf&oq=Norman+Matloff+The+Art+of+R+Programming+pdf&gs_lcp=CgZwc3ktYWIQAzIFCAAQyQM6BwgjEMkDECc6AgguUJk9WOdAYKRBaABwAHgAgAGHAYgB9QOSAQMwLjSYAQCgAQGqAQdnd3Mtd2l6wAEB&sclient=psy-ab&ved=0ahUKEwiGqOCEpLjtAhUC3aQKHRyyBTwQ4dUDCAw&uact=5)
+- Read [Welcome, Introduction, and then chapters: 2. Workflow Basics, 3. Data transformation, 5. Data tidying, and 7. Data import  from R for Data Science 2d, Hadley Wickham & Garrett Grolemund](https://r4ds.hadley.nz/)
+- **N.B.** Simply skip through anything related to `ggplot2` visualization package; we will have a plenty of time to deal with it.
 
 ### R Markdown
 
 [R Markdown](https://rmarkdown.rstudio.com/) is what I have used to produce this beautiful Notebook. We will learn more about it near the end of the course, but if you already feel ready to dive deep, here's a book: [R Markdown: The Definitive Guide, Yihui Xie, J. J. Allaire, Garrett Grolemunds.](https://bookdown.org/yihui/rmarkdown/) 
 
 
-
 ***
 Goran S. Milovanović
 
-DataKolektiv, 2020/21
+DataKolektiv, 2024.
 
 contact: goran.milovanovic@datakolektiv.com
 
-![](../_img/DK_Logo_100.png)
+![](_img/DK_Logo_100.png)
 
 ***
 License: [GPLv3](http://www.gnu.org/licenses/gpl-3.0.txt)
