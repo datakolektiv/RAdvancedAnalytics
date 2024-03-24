@@ -20,7 +20,7 @@
   - Reading and writing data into files (CSV, Excel, etc.)
   - Deeper into R markdown for reporting
 
-###Module 2: Data Visualization and Exploratory Analytics
+### Module 2: Data Visualization and Exploratory Analytics
 
 - Week 03
   - Basics of ggplot2: grammar of graphics
