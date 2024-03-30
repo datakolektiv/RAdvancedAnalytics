@@ -1,0 +1,60 @@
+---
+title: "ExampleRMarkdownNotebook01"
+author: "Goran S. Milvoanovic"
+date: "2024-03-25"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 0. Introduction
+
+![](_img/Rlogo.png)
+
+This is an analytical report on the most recent developments in the NFT market.
+
+
+## 0.1 The Basics of the NFT Market in 2024.
+
+Blach blah blah...
+
+**This is bold.**
+
+*This is italic.*
+
+This is an URL: [DataKolektiv](https://www.datakolektiv.com)
+
+``` {r echo = TRUE}
+print("Hello, World.")
+```
+
+## 0.2 Related Business Risks on the Contemporary NFT Market
+
+**Blach blah blah...**
+
+```{r echo=FALSE}
+library(ggplot2)
+data("mtcars")
+mtcars$model <- rownames(mtcars)
+head(mtcars)
+```
+
+```{r echo=FALSE}
+ggplot(data = mtcars, 
+       aes(x = mpg, y = qsec,
+           label = model, 
+           group = gear, 
+           color = gear)) + 
+  geom_point() + 
+  geom_smooth(formula ='y~x',
+              method = "lm", 
+              linewidth = .15) + 
+  ggtitle("mpg vs. qsec in the mtcars dataset, per gear.") + 
+  theme_bw() + 
+  theme(plot.title = element_text(size = 10)) + 
+  theme(panel.border = element_blank())
+```

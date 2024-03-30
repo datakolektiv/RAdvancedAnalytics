@@ -49,7 +49,7 @@ None. You have your machine in front of you, and that machine is running any of 
 
 ### 0.1 Install R
 
-**In case of any problems during the installation of R and RStudio, do not worry: we will review the procedure completelly in our first session.**
+**In case of any problems during the installation of R and RStudio, do not worry: we will review the procedure completely in our first session.**
 
 **NOTE.** Please take care to install **the latest available versions**. At the time of this writing, those were:
 
@@ -114,8 +114,6 @@ getwd()
 
 **Note.** As you can see, the file paths in R are a bit different that those that you are used to see on the Windows operative system (but exactly the same as those we have on Linux). R will use `/` to define paths, while Windows uses the backslash - `\` - instead. Your RStudio IDE takes care that these paths are compatible so there is nothing you need to worry about (for now).
 
-The output of `getwd()` should end with `01_IntroDataScience_Non-Tech/_Code` if you have opened the course RStudio project exactly as suggested in the beginning of this session. What comes before `01_IntroDataScience_Non-Tech/_Code` is the path on your local filesystem (i.e. your machine) where you have cloned the course repository.
-
 Now, let's learn about the contents of our current working directory:
 
 ``` {r echo = T}
@@ -130,11 +128,11 @@ Ok, `list.files(getwd())` returned a list of *files* found under our working dir
 getwd()
 ```
 
-and now we ask: what is found in `C:/Users/goran/___DataKolektiv/__EDU/01_IntroDataScience_Non-Tech/_Code/`, the directory right above our current working directory where we find the `.Rmd` R Notebook file (the one that we are now using)?
+and now we ask: what is found in `C:/Users/goran/___DataKolektiv/__EDU/RAdvancedAnalytics` (carefully!), the directory right above our current working directory where we find the `.Rmd` R Notebook file (the one that we are now using)?
 
 ``` {r echo = T}
 # THIS IS A COMMENT: This chunk of code makes use of the `list.files()` R function
-list.files('C:/Users/goran/___DataKolektiv/__EDU/RAdvancedAnalytics/RAdvancedAnalytics')
+list.files('C:/Users/goran/___DataKolektiv/__EDU/RAdvancedAnalytics/')
 ```
 
 Now, imagine I want to work in `C:/Users/goran/___DataKolektiv/__EDU/RAdvancedAnalytics/` instead of working in:
@@ -190,6 +188,7 @@ word2 <- "World"
 print(word1)
 print(word2)
 ```
+
 Ok, that is not what we wanted, but let's learn a few things. We have instantiated one variable in R, `word1`, and then another one, `word2`. By using the R *assignment operator* - `<-` - we have assigned the character value of `"Hello"` to `word1` and the value of `"World"` to `word2`. Then we have called the function `print()` twice to print out the values of the two variables.
 
 **NOTE.** You can use `=` as an assignment operator in R, of course, try: `word = "Hello"`, for example. However, **we do not do it by convention in R: we prefer to use the `<-` assignment operator**. Use `=` instead and you will easily confuse any mature R programmer that you eventually need to work with. Don't do it.
@@ -238,6 +237,8 @@ paste(
 ```
 
 What have we learned: that the `sep` argument of `paste` has a *default* value of `" "` - an empty space. Only when we have explicitly instructed `paste()` to use `sep = ""` - an empty string - the results was what we have looked for. As I told you: programming languages are very strict when it comes to communication, they have their inner rules and logic, and one needs to learn and understand that logic completely (or almost completely) to be in full command of a programming language. Also, we have learned that some arguments in some R functions have *default values*: if we do not specify a value of the argument that we want to use, the function will use its default value. 
+
+**N.B.** Learn about [documentation: paste()](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/paste)
 
 ### 3. Lists, arrays, and a bit more complicated functions.
 
@@ -758,6 +759,7 @@ a[[1]]
 ``` {r echo = T}
 a[[1]][[1]]
 ```
+
 ``` {r echo = T}
 a[[1]][[2]]
 ```
@@ -824,6 +826,7 @@ Enjoy this:
 ``` {r echo = T}
 5^2 
 ```
+
 ``` {r echo = T}
 "^"(5, 2) 
 ```
