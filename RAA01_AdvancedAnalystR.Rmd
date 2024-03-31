@@ -112,6 +112,7 @@ When we work in R, there is always something called a **working directory**. The
 getwd()
 ```
 
+
 **Note.** As you can see, the file paths in R are a bit different that those that you are used to see on the Windows operative system (but exactly the same as those we have on Linux). R will use `/` to define paths, while Windows uses the backslash - `\` - instead. Your RStudio IDE takes care that these paths are compatible so there is nothing you need to worry about (for now).
 
 Now, let's learn about the contents of our current working directory:
@@ -219,9 +220,9 @@ We call `paste()` twice:
 word1 <- "Hello"
 word2 <- "World"
 paste(
-  paste(word1, word2, sep = ", "),
+  paste(word1, word2, sep = ", "), 
   "."
-)
+  )
 ```
 
 Almost. What we do not like is the empty space between the end of `word2` and `.`:
@@ -245,8 +246,12 @@ What have we learned: that the `sep` argument of `paste` has a *default* value o
 What R functions have we seen thus far? Let's see: `print()`, `paste()`, `list.files()`, `getwd()`, `setwd()`. There are tons of them, I assure you. Take a look at this one, for example:
 
 ``` {r echo = T}
-word <- 'Hello World'
-strsplit(word, split = " ")
+word1 <- "Hello World"
+word2 <- "Goodbye World, this is the end."
+my_characters <- c(word1, word2)
+split_result <- strsplit(my_characters, split = " ")
+class(split_result)
+print(split_result)
 ```
 
 Ok, the meaning of `strsplit()` is, obviously `string split`, and it somehow breaks the strings in pieces, obviously using the `split` argument to learn what separator do we want to use to decompose a string, but... But the output looks strange, doesn't it?

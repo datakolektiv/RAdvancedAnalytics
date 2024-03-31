@@ -1,0 +1,757 @@
+---
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session01"
+author:
+- name: Goran S. Milovanović, PhD
+  affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
+abstract: null
+output:
+  html_document:
+    toc: true
+    toc_depth: 5
+  html_notebook:
+    code_folding: show
+    theme: spacelab
+    toc: true
+    toc_float: true
+    toc_depth: 5
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+---
+
+![](_img/DK_Logo_100.png)
+
+***
+# Module 1: Bootcamp for R Programming
+
+## Week 02: More on lists, vectors and functions + `data.frame` w. base R and Tidyverse
+
+**Feedback** should be send to `goran.milovanovic@datakolektiv.com`. 
+These notebooks accompany the ADVANCED ANALYST - Foundations for Advanced Data Analytics in R [DataKolektiv](http://www.datakolektiv.com/app_direct/DataKolektivServer/) training.
+
+***
+
+### Welcome to R!
+
+![](_img/AdvAnalyticsR2024_Banner.jpeg)
+
+### What do we want to do today?
+
+In today's session, we want to learn more about: functions, lists, and vectors in R, study the very important `apply` family of functions which often constitute the very foundation of solid R programming, learn how to load and save data from and to R, and familiarize ourselves with the basics of the Tidyverse approach to R programming, primarily by learning about the most important functions of the famous dplyr package. Of course, for work in R and Tidyverse to make sense to us, we also get acquainted with her majesty personally, the `data.frame` class!
+
+### 1. More R programming: vectors (lists, arrays), functions, `lapply()` and `sapply()` 
+
+Let's continue with lists. Reminder, a basic list in R:
+
+```{r echo = T}
+my_list <- list(10L, "Paris", 3.14, TRUE)
+print(my_list)
+```
+
+```{r echo = T}
+my_list <- list(10L, "Paris", 3.14, TRUE)
+print(my_list)
+```
+
+```{r echo = T}
+length(my_list)
+class(my_list)
+```
+
+Accessing elements in a list:
+
+```{r echo = T}
+my_list[[1]]
+```
+
+```{r echo = T}
+my_list[[4]]
+```
+
+```{r echo = T, eval = F}
+my_list[[5]]
+```
+Lists in R can be named:
+
+```{r echo = T}
+person <- list(name = "Mark",
+               family_name = "Smith",
+               phone = "+381661722838383", 
+               email = "mark.smith@rcourses.org", 
+               age = 40,
+               gender = "M", 
+               employed = TRUE)
+person
+```
+Accessing elememts in named lists:
+
+```{r echo = T}
+person$family_name
+```
+
+```{r echo = T}
+person$email
+```
+
+```{r echo = T}
+person[1:3]
+```
+Lists in R can be nested:
+
+```{r echo = T}
+ll <- list(e1 = 10, 
+           e2 = 20, 
+           e3 = list(
+             e1 = 20,
+             e2 = 40,
+             e3 = 15
+           ), 
+           e4 = 40,
+           e5 = list(
+             e1 = 12
+           ))
+ll
+```
+
+```{r echo = T}
+ll$e1
+```
+
+```{r echo = T}
+ll$e2
+```
+
+```{r echo = T}
+ll$e3
+```
+
+```{r echo = T}
+ll$e3$e1
+```
+
+```{r echo = T}
+ll$e3$e3
+```
+
+```{r echo = T}
+ll$e4
+```
+
+```{r echo = T}
+ll$e5$e1
+```
+
+`lapply()` is one of the most important functions in the R programming language. For a given list or array, and a given single-argument function, `lapply()` applies the given function to each element of the given input vector (list or array - because in R, both lists and arrays are vectors) and returns the results one by one in a new list. Let's see:
+
+```{r echo = T}
+my_list <- list(1,2,3,4,5)
+my_list
+```
+
+Now `lapply()` the `square()` function to `my_list`: 
+
+```{r echo = T}
+# introducing the square() function:
+square <- function(x) {
+  return(x^2)
+}
+# lapply square() to my_list
+lapply(my_list, square)
+```
+
+```{r echo = T}
+square(9)
+```
+
+We saw how easy it is to write a function in R! Let's try more:
+
+```{r echo = T}
+my_nums <- 1:10
+
+power <- function(x, y) {
+  p <- x^y
+  return(p)
+}
+
+lapply(my_nums, power, 2)
+```
+
+```{r echo = T}
+lapply(my_nums, power, 3)
+```
+
+So, to the `lapply()` function - which in R jargon is called a functional because it takes another function as an argument - I can pass the second argument of the function f(x,y) separately!
+
+But R can already do `^`, so I really do not need any such functions as `square()` or `power()`, right:
+
+```{r echo = T}
+lapply(my_list, "^", 2)
+```
+
+```{r echo = T}
+lapply(my_list, "^", 3)
+```
+**N.B.** Now comes a very important part. The following will not work:
+
+```{r echo = T, eval = FALSE}
+my_list^2
+```
+because `my_list` is a list. But the following will work (please pay close attention to this):
+
+```{r echo = T}
+# my_list will now be a numeric (an array, not a list)
+my_list <- 1:100
+my_list^2
+```
+
+```{r echo = T}
+my_list^3
+```
+
+# AWESOME!
+
+**VECTORIZATION IN R**
+
+What is Vectorization?
+
+In R, vectorization is the art of working with whole vectors (or arrays) of data at once, rather than looping through individual elements. It's like inviting all your friends to a party with one big invitation, rather than calling each one separately. Efficient, right?
+
+R is designed to be vectorized, meaning that its operations are optimized for working with vectors straight out of the box. This makes your code cleaner, faster, and more R-ish.
+
+**Why Vectorize?**
+
+- Speed: Vectorized code runs faster because it reduces the overhead of repeated function calls and loops. It's like sending a group text instead of individual messages.
+
+- Simplicity: Vectorized operations can replace loops with single, expressive statements. Your code looks neater and is easier to understand.
+
+- R-Style: Vectorization is the R way. Embracing vectorization is embracing the heart of R.
+
+Examples of Vectorization
+
+Let’s look at some examples to see vectorization in action.
+
+Example 1: Adding Two Vectors
+
+Without vectorization, if you wanted to add two vectors element by element, you might loop through each element like so (imagine doing this in a less vector-friendly language):
+
+```{r echo = T}
+a <- c(1, 2, 3)
+b <- c(4, 5, 6)
+result <- numeric(length(a))
+
+for (i in 1:length(a)) {
+  result[i] <- a[i] + b[i]
+}
+result
+```
+
+With vectorization in R, you just do:
+
+```{r echo = T}
+a <- c(1, 2, 3)
+b <- c(4, 5, 6)
+result <- a + b
+result
+```
+
+Boom! Both vectors are added in one fell swoop!
+
+Example 2: Applying Functions to Vectors
+Want to double each number in a vector? Forget loops; embrace vectorization:
+
+```{r echo = T}
+numbers <- c(1, 2, 3, 4)
+doubled <- numbers * 2
+doubled
+```
+
+Just like that, every number in your vector is invited to the doubling party.
+
+Example 3: Using `lapply` and `sapply`
+
+```{r echo = T}
+numbers <- c(1, 2, 3, 4)
+squared <- sapply(numbers, function(x) x^2)
+squared
+```
+
+`sapply()` takes each element of numbers, squares it, and returns a vector of the results.
+
+Absolutely, diving into the differences between `sapply()` and `lapply()` in R is like exploring the nuances of two very efficient, but slightly different, magical spells in the world of R programming.
+
+`lapply()`: The List Apprentice
+
+`lapply()` stands for **List Apply**. It takes three main ingredients: a list or a vector, a function, and additional arguments to the function. `lapply()` then applies the function to each element of the list or vector. The twist? It always returns a list, regardless of what you give it or what the function does. Think of `lapply()` as the diligent apprentice who carefully places each result into a list, maintaining the structure and order, no matter what.
+
+Here's lapply() in action:
+
+```{r echo = T}
+numbers <- 1:4
+result_list <- lapply(numbers, function(x) x^2)
+result_list
+```
+
+This incantation squares each number in numbers, and `result_list` is indeed a list where each element is the square of the corresponding number in numbers.
+
+`sapply()`: The Shape Shifter
+
+`sapply()`, or **Simplify Apply**, is a bit more ambitious. It takes the same ingredients as `lapply()` but adds a dash of cleverness. `sapply()` tries to simplify the result. If the result can be neatly arranged into a vector or a matrix, `sapply()` will do so. If not, it defaults to giving you a list, much like `lapply()`. It's like a shape shifter, adapting its form to whatever fits best for the given operation.
+
+Using `sapply()` looks like this:
+
+```{r echo = T}
+numbers <- 1:4
+result_vector <- sapply(numbers, function(x) x^2)
+result_vector
+```
+
+Here, `result_vector` is not a list but a vector, because the outcome of squaring each number can be neatly stored in a vector.
+
+**The Main Difference**
+
+The essence of the difference lies in the return value:
+
+- `lapply()` will always return a list, which is perfect when you want to ensure the structure of the output is consistent, especially useful with more complex operations or when the output sizes may vary.
+- `sapply()` attempts to simplify the result into a more user-friendly form (vector or matrix), which can be great for quick calculations where the simplified form is more convenient to work with.
+
+**When to Use Which?**
+
+- Use `lapply()` when you need consistency in the output format (always a list) or when dealing with complex data structures.
+
+- Use `sapply()` for simpler or more straightforward operations where a vector or matrix output is preferred for ease of use or when the function being applied returns scalars or vectors of the same length.
+
+Remember, while `sapply()` can be convenient with its simplifying ways, it may sometimes surprise you by returning a list anyway, if it can't simplify the output. So, if you need absolute certainty about the structure of your output, `lapply()` is your go-to spell.
+
+Both functions are powerful tools in your R programming arsenal, so practice with them and see which one best fits your current task!
+
+### 2. Her Majesty the `data.frame` class, I/O operations from R, and basic manipulation of `data.frames`
+
+We're embarking on a journey with a dataset named `flights.csv` which originates from the `nycflights13` package. Picture yourself as a data wizard, and this dataset is your magical tome from which you'll conjure insights. Let's get started by learning how to load this mystical tome into R and explore its secrets.
+
+#### Summoning the Data: Loading a data.frame from a CSV File
+
+First things first, we need to bring your data into R. This process is akin to summoning a creature from another realm. Here's the spell (enters `tidyverse`):
+
+```{r echo = T}
+# Load the tidyverse package for its faster data reading capabilities
+library(tidyverse)
+
+# The path to your CSV file
+data_dir <- paste0(getwd(), "/_data/")
+filename <- "flights.csv"
+filepath <- paste0(data_dir, filename)
+
+# Summon the data into R
+flights <- read_csv(filepath)
+
+# Glimpse its structure to ensure it has arrived in full
+glimpse(flights)
+```
+
+#### The Basics of `data.frame` in R
+
+Dive into the core spells and charms you'll need to navigate your `data.frame`:
+
+##### Indexing
+
+First, we do not really need the first column...
+
+```{r echo = T}
+# removing a column from a data.frame
+flights$`...1` <- NULL
+```
+
+Select the "carrier" column by name:
+
+```{r echo = T}
+# Select the "carrier" column by name
+carrier <- flights$carrier
+head(carrier)
+length(carrier)
+class(carrier)
+
+# Select the first column by position
+first_column <- flights[, 1]
+head(first_column)
+length(first_column)
+class(first_column)
+```
+
+```{r echo = T}
+# Select the first row
+first_row <- flights[1, ]
+first_row
+
+# Select the first three rows
+first_three_rows <- flights[1:3, ]
+head(first_three_rows)
+```
+
+##### Subsetting
+
+```{r echo = T}
+# Subset flights where the departure delay is greater than 100
+late_flights <- flights[flights$dep_delay > 100, ]
+head(late_flights)
+```
+
+What flights have we selected? Let's see:
+
+```{r echo = T}
+summary(late_flights$dep_delay)
+```
+
+
+```{r echo = T}
+# Subset flights to only those that are from carrier "AA"
+airline_AA_flights <- subset(flights, carrier == "AA")
+head(airline_AA_flights)
+```
+
+What have we selected?
+
+```{r echo = T}
+table(airline_AA_flights$carrier)
+```
+
+##### Basic Manipulations
+
+```{r echo = T}
+# Add a new column indicating flights with a departure delay > 100
+flights$is_late <- flights$dep_delay > 100
+head(flights)
+```
+
+Remove the `is_late` column:
+
+```{r echo = T}
+# Remove the 'is_late' column
+flights$is_late <- NULL
+```
+
+For more advanced manipulation with `dplyr`:
+
+```{r echo = T}
+# Ensure dplyr is loaded
+# library(dplyr)
+
+# Filter for flights with distance > 1000 and select only the `dep_delay` and `arr_delay` columns
+flights_details <- flights |>
+  filter(distance > 1000) |>
+  select(dep_delay, arr_delay)
+head(flights_details)
+```
+
+### 3. Base R manipulation of `data.frame`: the `iris` data set
+
+Enters the `iris` data set with rows of data-flora and columns of variable-trees. Let's explore how to tend to this garden using the tools of R!
+
+#### Summoning the Garden: Loading the `iris` Dataset
+
+First, let's bring the `iris` garden into the light:
+
+```{r echo = T}
+data("iris")
+summary(iris)
+```
+
+```{r echo = T}
+str(iris)
+```
+
+The garden is now before us. But how do we know what's in it?
+
+#### Exploring `iris`: Understanding Your `data.frame`
+
+To get a sense of the garden's layout, we can use `dim()`, `head()`, and `tail()` spells.
+
+- **`dim()`** tells us the dimensions of our garden, revealing the number of rows (flowers) and columns (features) it contains.
+
+```{r echo = T}
+# Discover the dimensions of the iris garden
+dim(iris)
+```
+
+- **`head()`** allows us to peek at the first few flowers in our garden, showing the first 6 rows by default.
+
+```{r echo = T}
+# Peek at the first few flowers
+head(iris)
+```
+
+- **`tail()`** lets us glance at the last few flowers, also showing the last 6 rows by default.
+
+```{r echo = T}
+# Glance at the last few flowers
+tail(iris)
+```
+
+#### Navigating the Garden: Indexing and Subsetting
+
+In this magical garden, if you wish to examine specific flowers or even specific features of those flowers, you'll need to master the art of indexing and subsetting.
+
+##### Indexing
+
+Indexing is like pointing your wand at a specific part of the garden to get a closer look.
+
+- **By Columns:** To observe a specific feature across all flowers, use the `$` operator or `[ , ]` with the column name or index.
+
+```{r echo = T}
+# Observe the Sepal.Length feature
+sepal_lengths <- iris$Sepal.Length  # Using $
+head(sepal_lengths)
+
+sepal_lengths <- iris[, "Sepal.Length"]  # Using [ , ]
+head(sepal_lengths)
+```
+
+- **By Rows:** To examine specific flowers, use `[ , ]` with row indices.
+
+```{r echo = T}
+# Examine the first flower
+first_flower <- iris[1, ]
+print(first_flower)
+```
+
+##### Subsetting
+
+Subsetting is like casting a spell to reveal only those parts of the garden that meet certain conditions.
+
+- **By Condition:** To find flowers with a specific characteristic, use `[ ]` with a condition.
+
+```{r echo = T}
+# Find flowers with a Sepal.Length greater than 7
+large_sepals <- iris[iris$Sepal.Length > 7, ]
+large_sepals
+```
+
+- **Multiple Conditions:** Combine conditions with `&` (AND) or `|` (OR) for more complex queries.
+
+```{r echo = T}
+# Find flowers that are of the species 'setosa' and have a Petal.Length less than 1.5
+setosa_small_petals <- iris[iris$Species == "setosa" & iris$Petal.Length < 1.5, ]
+setosa_small_petals
+```
+
+#### Tending to the Garden: Basic Manipulations
+
+While we won't reshape the entire garden today, knowing how to add or remove features (columns) and flowers (rows) is crucial.
+
+- **Adding a Feature:** Suppose we want to note which flowers have a sepal length greater than the mean.
+
+```{r echo = T}
+# Add a new feature
+iris$LargeSepal <- iris$Sepal.Length > mean(iris$Sepal.Length)
+iris
+```
+
+- **Removing a Feature:** If we decide we no longer need that feature.
+
+```{r echo = T}
+# Remove the LargeSepal feature
+iris$LargeSepal <- NULL
+```
+
+
+### 4. {dplyr} manipulation of `data.frame`: the `iris` data set
+
+This time we'll use the powerful spells from the `dplyr` package, a toolkit designed for data sorcery that's both elegant and efficient. Let's see how these spells transform our approach to tending to our data garden!
+
+#### The Spells of Data Manipulation
+
+##### `select()`: Observing Certain Features
+
+With `select()`, we choose which features of the flowers we wish to observe, hiding the rest.
+
+```{r echo = T}
+# Focus on the Sepal.Length and Species features
+sepal_and_species <- dplyr::select(iris, Sepal.Length, Species)
+sepal_and_species
+```
+
+##### `filter()`: Selecting Flowers by Condition
+
+`filter()` allows us to focus on flowers that meet specific conditions, much like using a magical lens.
+
+```{r echo = T}
+# Find flowers where the Sepal.Length is greater than 7
+# N.B. Mind the dplyr:: prefix and note the usage of R pipes: |>
+large_sepals <- iris |>
+  dplyr::filter(Sepal.Length > 7)
+large_sepals
+```
+
+
+##### `group_by()`: Gathering Flowers by Species
+
+`group_by()` is akin to gathering flowers into bunches by their species, preparing for group-specific spells.
+
+```{r echo = T}
+# Group flowers by species
+grouped_iris <- dplyr::group_by(iris, Species)
+grouped_iris
+```
+
+**N.B.** `dplyr::group_by()` has no immediate effect: we will demonstrate its usage in a minute!
+
+##### `arrange()`: Organizing Flowers
+
+`arrange()` lets us organize the flowers in our garden by the size of a feature, either ascending or descending.
+
+```{r echo = T}
+# Arrange flowers by descending Sepal.Length
+arranged_iris <- dplyr::arrange(iris, desc(Sepal.Length))
+arranged_iris
+```
+
+#### `mutate()`: Enriching Flowers with New Features
+
+With `mutate()`, we can magically enhance each flower with new features or transform existing ones.
+
+```{r echo = T}
+# Add a new feature indicating if the Sepal.Length is above the mean
+iris <- dplyr::mutate(iris, Is_Sepal_Long = Sepal.Length > mean(Sepal.Length))
+iris
+```
+
+With piping:
+
+```{r echo = T}
+# Add a new feature indicating if the Sepal.Length is above the mean
+iris <- iris |> 
+  dplyr::mutate(Is_Sepal_Long = Sepal.Length > mean(Sepal.Length))
+iris
+```
+
+
+#### `summarise()` (with `group_by()`): Distilling Essence from Flowers
+
+`summarise()` allows us to distill the essence of our grouped flowers, reducing them to significant summarised information.
+
+```{r echo = T}
+# Calculate the average Sepal.Length for each species
+avg_sepal_by_species <- iris |>
+  dplyr::group_by(Species) |>
+  dplyr::summarise(Avg_Sepal_Length = mean(Sepal.Length))
+```
+
+More piping!
+
+```{r echo = T}
+# Calculate the average Sepal.Length for each species
+avg_sepal_by_species <- iris |>
+  dplyr::filter(Sepal.Length > 2) |>
+  dplyr::mutate(LargePetalLength = Petal.Length > 2) |>
+  dplyr::group_by(Species) |>
+  dplyr::summarise(Avg_Sepal_Length = mean(Sepal.Length))
+avg_sepal_by_species
+```
+
+### 5. I/O operations R; working with Excel files
+
+Alright, let's embark on another journey with your newly provided tome, `listings.xlsx`. However, before we dive in, there's a small twist in our tale. To deal with Excel files, we usually invoke the power of the `readxl` package rather than `readr`, as `readr` specializes in text formats like `CSVs`.
+
+#### Step 1: Summoning the Excel Tome
+
+First, we must summon `listings.xlsx` into R. For this, we call upon `readxl`.
+
+```{r echo = T}
+# Install and load readxl package
+# install.packages("readxl")
+library(readxl)
+
+# Path to the Excel file
+file_path <- paste0(data_dir, "listings.xlsx")
+
+# Summon the data
+listings <- read_excel(file_path)
+head(listings)
+```
+
+#### Step 2: Inspecting the Tome's Contents
+
+With `listings` now in our environment, let's use `dplyr` to inspect its contents.
+
+```{r echo = T}
+# Glimpse the structure of the data
+glimpse(listings)
+
+# Peek at the first few rows
+head(listings)
+```
+
+These spells reveal the structure of our data, showing the types of variables and a sneak peek of the first few entries, akin to reading the first few lines of a scroll.
+
+### Step 3: Enchanting the Data with New Columns
+
+Suppose we wish to add a new column, `MagicRating`, to our `listings`, to rate each listing with our own magical intuition.
+
+```{r echo = T}
+# Add a new column 'MagicRating'
+listings <- listings %>%
+  mutate(MagicRating = if_else(price > median(price), "High", "Low"))
+```
+
+This enchantment adds a `MagicRating` based on whether the listing's price is above or below the median price of all listings.
+
+### Step 4: Inscribing the Enchanted Data onto a CSV Scroll
+
+Now, we wish to share our enchanted data with the world. We turn the data back into a CSV format, easily shared and read by scholars far and wide.
+
+```{r echo = T}
+# Load readr for writing CSV
+library(readr)
+
+# Path for the new CSV file: use your analytics_dir
+analytics_dir <- paste0(getwd(), "/_analytics/")
+csv_path <- paste0(analytics_dir, "enchanted_listings.csv")
+
+# Write to disk
+write_csv(listings, csv_path)
+```
+
+### Step 5: Binding the Enchanted Data into a New Excel Tome
+
+Lastly, we wish to preserve our enchanted data in another Excel tome, for those who prefer the ancient formats.
+
+```{r echo = T}
+# Install and load writexl package
+# install.packages("writexl")
+library(writexl)
+
+# Path for the new Excel file
+excel_path <- paste0(analytics_dir, "enchanted_listings.xlsx")
+
+# Write to disk
+write_xlsx(listings, excel_path)
+```
+
+And there we have it, a complete journey from summoning data from an Excel tome, through inspection and enchantment, to sharing the wisdom contained within through both CSV and Excel formats!
+
+### Further Readings
+
+- Read [Everything ggplot2 related from R for Data Science 2d, Hadley Wickham & Garrett Grolemund: exactly what I have suggested to you to skip after our Session01](https://r4ds.hadley.nz/)
+- **N.B.** Simply skip through anything related to `ggplot2` visualization package; we will have a plenty of time to deal with it.
+
+### R Markdown
+
+[R Markdown](https://rmarkdown.rstudio.com/) is what I have used to produce this beautiful Notebook. We will learn more about it near the end of the course, but if you already feel ready to dive deep, here's a book: [R Markdown: The Definitive Guide, Yihui Xie, J. J. Allaire, Garrett Grolemunds.](https://bookdown.org/yihui/rmarkdown/) 
+
+
+***
+Goran S. Milovanović
+
+DataKolektiv, 2024.
+
+contact: goran.milovanovic@datakolektiv.com
+
+![](_img/DK_Logo_100.png)
+
+***
+License: [GPLv3](http://www.gnu.org/licenses/gpl-3.0.txt)
+This Notebook is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This Notebook is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this Notebook. If not, see <http://www.gnu.org/licenses/>.
+
+***
+
