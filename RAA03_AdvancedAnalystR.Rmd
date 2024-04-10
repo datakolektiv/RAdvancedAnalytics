@@ -1,0 +1,466 @@
+---
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session03"
+author:
+- name: Goran S. Milovanović, PhD
+  affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
+abstract: null
+output:
+  html_notebook:
+    code_folding: show
+    theme: spacelab
+    toc: true
+    toc_float: true
+    toc_depth: 5
+  html_document:
+    toc: true
+    toc_depth: 5
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+---
+
+![](_img/DK_Logo_100.png)
+
+***
+# Module 2: Data Visualization and Exploratory Analytics
+
+## Week 03: Basics of ggplot2: The Grammar of Graphics
+
+**Feedback** should be send to `goran.milovanovic@datakolektiv.com`. 
+These notebooks accompany the ADVANCED ANALYST - Foundations for Advanced Data Analytics in R [DataKolektiv](http://www.datakolektiv.com/app_direct/DataKolektivServer/) training.
+
+***
+
+### Welcome to R!
+
+![](_img/AdvAnalyticsR2024_Banner.jpeg)
+
+### What do we want to do today?
+
+Our task in this session is to learn the basics of the powerful [ggplot2](https://ggplot2.tidyverse.org/) package, the industry standard in *data visualization*. Instead of learning visualization just to learn ggplot2, we will set ourselves a narrative: namely, right from the start, through visualization, we will actually conduct a minimal EDA - which stands for **Exploratory Data Analysis**. The EDA step is something that practically begins every serious statistical analysis of a dataset and serves to allow the analyst to make the first, important, and preliminary conclusions about the data in front of them, before starting to use more powerful analytical tools of statistical modeling and machine learning. Data visualization plays a huge role in these steps.
+
+### 1. The data set at hand: `flights` 
+
+We have already used the `flights` data set: it is part of a broader set of data that we can obtain from the well-known R package [nycflights13: Flights that Departed NYC in 2013](https://cran.r-project.org/web/packages/nycflights13/index.html).
+
+```{r echo = T}
+# Load the tidyverse package: ggplot2 is a part of it!
+library(tidyverse)
+
+# The path to your CSV file
+data_dir <- paste0(getwd(), "/_data/")
+filename <- "flights.csv"
+filepath <- paste0(data_dir, filename)
+
+# Load the data into R
+flights <- readr::read_csv(filepath)
+
+# Remove the index column
+flights$...1 <- NULL
+
+# Glimpse its structure to ensure it has arrived in full
+glimpse(flights)
+```
+### 2. Descriptive Statistics
+
+Descriptive statistics summarize and provide information about your data. Common measures include mean, median, mode (for central tendency), standard deviation, and quartiles (for variability).
+
+Example in R: 
+
+```{r echo = T}
+# Summary of the dataset
+summary(flights)
+```
+Calculate mean and median for a numeric column, e.g., `distance`:
+
+```{r echo = T}
+mean(flights$distance)
+median(flights$distance)
+```
+The frequency distribution of a variable, e.g. `carrier`:
+
+```{r echo = T}
+table(flights$carrier)
+```
+Frequency table as a data.frame:
+
+```{r echo = T}
+carriers <- as.data.frame(table(flights$carrier))
+head(carriers)
+```
+
+Sort data.frame in R with `dplyr::arrange()`:
+
+```{r echo = T}
+carriers <- as.data.frame(table(flights$carrier))
+# We will analyse the next line carefully:
+carriers <- carriers |> dplyr::arrange(desc(Freq))
+
+head(carriers, 10)
+```
+
+### 3. Introducing Outliers with `ggplot2::geom_boxplot()`
+
+Outliers are data points that differ significantly from other observations. They can indicate variability in a measurement, experimental errors, or novelty.
+
+Boxplot in ggplot2:
+
+```{r echo = T}
+# Assuming 'dep_delay' might have outliers
+ggplot(flights, aes(y = dep_delay)) + 
+  geom_boxplot(fill = "darkorange") + 
+  labs(y = "dep_delay") + 
+  ggtitle("Boxplot of Departure Delay") + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+Hm, how many `NA` entries do we have in `flights$dep_delay`?
+
+```{r echo = T}
+sum(is.na(flights$dep_delay))
+```
+
+Too much. I will keep only complete observations from `flights`:
+
+```{r echo = T}
+dim(flights)
+flights <- flights[complete.cases(flights), ]
+dim(flights)
+```
+Let's boxplot it now:
+
+```{r echo = T}
+ggplot(flights, aes(y = dep_delay)) + 
+  geom_boxplot(fill = "darkorange") + 
+  labs(y = "dep_delay") + 
+  ggtitle("Boxplot of Departure Delay") + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+
+A log scale, perhaps?
+
+```{r echo = T}
+ggplot(flights, aes(y = log(dep_delay))) + 
+  geom_boxplot(fill = "darkorange") + 
+  labs(y = "log(dep_delay)") + 
+  ggtitle("Boxplot of Departure Delay") + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+
+Let's see...
+
+```{r echo = T}
+sum(flights$dep_delay <= 0)
+```
+Ok, remove zero observations from `flights$dep_delay`:
+
+```{r echo = T}
+dim(flights)
+flights <- flights[flights$dep_delay > 0, ]
+dim(flights)
+```
+
+
+```{r echo = T}
+ggplot(flights, aes(y = log(dep_delay))) + 
+  geom_boxplot(fill = "darkorange") + 
+  labs(y = "log(dep_delay)") + 
+  ggtitle("Boxplot of Departure Delay") + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+
+The definitions of the fences used in R in a boxplot are:
+
+- Lower inner fence: Q1 - 1.5*IQR
+- Upper inner fence: Q3 + 1.5*IQR
+- Lower outer fence: Q1 - 3*IQR
+- Upper outer fence: Q3 + 3*IQR
+
+- A point beyond an inner fence on either side is considered a *mild outlier*.
+- A point beyond an outer fence is considered an *extreme outlier*.
+
+Wait, what is **IQR**?
+
+```{r echo = T}
+median(flights$dep_delay)
+```
+
+```{r echo = T}
+# Q1
+quantile(flights$dep_delay, .25)
+```
+
+```{r echo = T}
+# Q3
+quantile(flights$dep_delay, .75)
+```
+The median:
+
+```{r echo = T}
+# median
+quantile(flights$dep_delay, .5)
+```
+IQR is the Interquartile Range:
+
+```{r echo = T}
+IQR <- quantile(flights$dep_delay, .75) - quantile(flights$dep_delay, .25)
+print(IQR)
+```
+Named vectors in R... 
+
+```{r echo = T}
+IQR <- unname(quantile(flights$dep_delay, .75) - quantile(flights$dep_delay, .25))
+print(IQR)
+```
+In ggplot2, the boxplot whiskers extend to +/- 1.5*IQR by default. Mind the log scale in our example!
+
+```{r echo = T}
+ggplot(flights, aes(y = dep_delay)) + 
+  geom_boxplot(fill = "darkorange") + 
+  labs(y = "dep_delay") + 
+  ggtitle("Boxplot of Departure Delay") + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+
+### 4. A ggplot2 visualization, step by step
+
+Take the following example of a bar plot:
+
+```{r echo = T}
+carriers <- flights |> 
+  dplyr::select(carrier) |>
+  dplyr::group_by(carrier) |>
+  dplyr::summarise(count = n()) |>
+  dplyr::arrange(desc(count))
+
+head(carriers, 10)
+```
+
+```{r echo = T}
+ggplot(data = carriers, 
+       aes(x = carrier, 
+           y = count)
+       ) + 
+  geom_bar(stat = 'identity', fill = "cadetblue3") +
+  xlab('Carrier') + 
+  ylab('Count') +
+  ggtitle('Carrier distribution in the Flights data set') + 
+  theme_bw() + 
+  theme(panel.border = element_blank())
+```
+
+Let's go step by step to see how the structure of this chart is built.
+
+First, without using geoms, we get only the "blueprint" of the chart: {ggplot2} recognizes which variables we are using and what are, broadly, their scales; it maps them to the horizontal and vertical axis.
+
+```{r echo = T}
+ggplot(data = carriers, 
+       aes(x = carrier, 
+           y = count)
+       )
+```
+
+Geoms are what {ggplot2} enables to understand how we want to visualize something. Geoms are its "verbs," "predicates," and they have a clearly defined semantics: we want a bar plot, or we want points, or lines, etc.
+
+```{r echo = T}
+ggplot(data = carriers, 
+       aes(x = carrier, 
+           y = count)
+       ) + 
+  geom_bar(stat = 'identity',
+           color = 'black',
+           fill = 'darkred')
+```
+
+We add a title with the `ggtitle()` function and the axes labels with `xlab()` and `ylab()` :
+
+
+```{r echo = T}
+ggplot(data = carriers, 
+       aes(x = carrier, 
+           y = count)
+       ) + 
+  geom_bar(stat = 'identity', 
+           fill = "cadetblue3") +
+  xlab('Carrier') + 
+  ylab('Count') +
+  ggtitle('Carrier distribution in the Flights data set')
+```
+
+In the third step, we use the `theme()` function to fine-tune the elements of the chart precisely: while geoms describe how we want to present the data, in `theme()` we deal more with aesthetics and ergonomics.
+
+```{r echo = T}
+ggplot(data = carriers, 
+       aes(x = carrier, 
+           y = count)
+       ) + 
+  geom_bar(stat = 'identity', fill = "cadetblue3") +
+  xlab('Carrier') + 
+  ylab('Count') +
+  ggtitle('Carrier distribution in the Flights data set') + 
+  theme_bw() + 
+  theme(panel.border = element_blank())
+```
+
+And we fine-tune further, centering the title with theme():
+
+```{r echo = T}
+ggplot(data = carriers, 
+       aes(x = carrier, 
+           y = count)
+       ) + 
+  geom_bar(stat = 'identity', fill = "cadetblue3") +
+  xlab('Carrier') + 
+  ylab('Count') +
+  ggtitle('Carrier distribution in the Flights data set') + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The documentation of `theme()` is rather important to master ggplot2: [Modify components of a theme](https://ggplot2.tidyverse.org/reference/theme.html).
+
+Remember our boxplot of `dep_delay`? Let's study departure delays across carriers now:
+
+```{r echo = T}
+ggplot(flights, aes(x = carrier, 
+                    y = log(dep_delay), 
+                    fill = carrier)) + 
+  geom_boxplot(color = "black") + 
+  labs(y = "log(dep_delay)") + 
+  ggtitle("Boxplot of Departure Delay") + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+
+### 5. A ggplot2 scatter plot
+
+Scatter plots are a type of data visualization that show the relationship between two variables. Each point on the scatter plot represents an observation from the dataset, with its position determined by the values of these two variables.
+
+```{r echo = T}
+flights <- flights[flights$arr_delay > 0, ]
+
+ggplot(data = flights, 
+       aes(x = dep_delay,
+           y = arr_delay)
+       ) + 
+  geom_point() + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  ggtitle("Scatter Plot: Departure vs Arrival Delay") + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+
+Let's now map a third variable onto this scatter plot: `air_time`!
+
+```{r echo = T}
+ggplot(data = flights, 
+       aes(x = dep_delay,
+           y = arr_delay, 
+           size = arr_time, 
+           color = arr_time)
+       ) + 
+  geom_point() + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  ggtitle("Scatter Plot: Departure vs Arrival Delay") + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+
+Let's now map a fourth variable onto this scatter plot: `distance`!
+
+```{r echo = T}
+ggplot(data = flights, 
+       aes(x = dep_delay,
+           y = arr_delay, 
+           size = distance, 
+           color = arr_time)
+       ) + 
+  geom_point() + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  ggtitle("Scatter Plot: Departure vs Arrival Delay") + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+
+And let's use `facet_wrap()` to map a fifth variable: `carrier`.
+
+```{r echo = T}
+ggplot(data = flights, 
+       aes(x = dep_delay,
+           y = arr_delay, 
+           size = distance, 
+           color = arr_time)
+       ) + 
+  geom_point() + 
+  facet_wrap(~carrier, ncol = 4) +
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  ggtitle("Scatter Plot: Departure vs Arrival Delay") + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+
+
+### Further Readings
+
+- Read [Visualize from R for Data Science 2d, Hadley Wickham & Garrett Grolemund: chapters 9, 10, and 11](https://r4ds.hadley.nz/)
+
+### R Markdown
+
+[R Markdown](https://rmarkdown.rstudio.com/) is what I have used to produce this beautiful Notebook. We will learn more about it near the end of the course, but if you already feel ready to dive deep, here's a book: [R Markdown: The Definitive Guide, Yihui Xie, J. J. Allaire, Garrett Grolemunds.](https://bookdown.org/yihui/rmarkdown/) 
+
+
+***
+Goran S. Milovanović
+
+DataKolektiv, 2024.
+
+contact: goran.milovanovic@datakolektiv.com
+
+![](_img/DK_Logo_100.png)
+
+***
+License: [GPLv3](http://www.gnu.org/licenses/gpl-3.0.txt)
+This Notebook is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This Notebook is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this Notebook. If not, see <http://www.gnu.org/licenses/>.
+
+***
+

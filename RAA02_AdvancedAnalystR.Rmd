@@ -1,5 +1,5 @@
 ---
-title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session01"
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session02"
 author:
 - name: Goran S. Milovanović, PhD
   affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
@@ -83,6 +83,7 @@ person <- list(name = "Mark",
                employed = TRUE)
 person
 ```
+
 Accessing elememts in named lists:
 
 ```{r echo = T}
@@ -144,7 +145,7 @@ ll$e5$e1
 `lapply()` is one of the most important functions in the R programming language. For a given list or array, and a given single-argument function, `lapply()` applies the given function to each element of the given input vector (list or array - because in R, both lists and arrays are vectors) and returns the results one by one in a new list. Let's see:
 
 ```{r echo = T}
-my_list <- list(1,2,3,4,5)
+my_list <- list(1, 2, 3, 4, 5)
 my_list
 ```
 
@@ -153,8 +154,10 @@ Now `lapply()` the `square()` function to `my_list`:
 ```{r echo = T}
 # introducing the square() function:
 square <- function(x) {
-  return(x^2)
+  m <- x^2
+  return(m)
 }
+
 # lapply square() to my_list
 lapply(my_list, square)
 ```
@@ -191,11 +194,13 @@ lapply(my_list, "^", 2)
 ```{r echo = T}
 lapply(my_list, "^", 3)
 ```
+
 **N.B.** Now comes a very important part. The following will not work:
 
 ```{r echo = T, eval = FALSE}
 my_list^2
 ```
+
 because `my_list` is a list. But the following will work (please pay close attention to this):
 
 ```{r echo = T}
@@ -342,7 +347,7 @@ filename <- "flights.csv"
 filepath <- paste0(data_dir, filename)
 
 # Summon the data into R
-flights <- read_csv(filepath)
+flights <- readr::read_csv(filepath)
 
 # Glimpse its structure to ensure it has arrived in full
 glimpse(flights)
@@ -358,7 +363,7 @@ First, we do not really need the first column...
 
 ```{r echo = T}
 # removing a column from a data.frame
-flights$`...1` <- NULL
+flights$...1 <- NULL
 ```
 
 Select the "carrier" column by name:
@@ -369,9 +374,11 @@ carrier <- flights$carrier
 head(carrier)
 length(carrier)
 class(carrier)
+```
 
+```{r echo = T}
 # Select the first column by position
-first_column <- flights[, 1]
+first_column <- flights[ , 1]
 head(first_column)
 length(first_column)
 class(first_column)
