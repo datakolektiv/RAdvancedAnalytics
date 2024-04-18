@@ -61,6 +61,7 @@ flights$...1 <- NULL
 # Glimpse its structure to ensure it has arrived in full
 glimpse(flights)
 ```
+
 ### 2. Descriptive Statistics
 
 Descriptive statistics summarize and provide information about your data. Common measures include mean, median, mode (for central tendency), standard deviation, and quartiles (for variability).
@@ -71,17 +72,20 @@ Example in R:
 # Summary of the dataset
 summary(flights)
 ```
+
 Calculate mean and median for a numeric column, e.g., `distance`:
 
 ```{r echo = T}
 mean(flights$distance)
 median(flights$distance)
 ```
+
 The frequency distribution of a variable, e.g. `carrier`:
 
 ```{r echo = T}
 table(flights$carrier)
 ```
+
 Frequency table as a data.frame:
 
 ```{r echo = T}
@@ -93,6 +97,7 @@ Sort data.frame in R with `dplyr::arrange()`:
 
 ```{r echo = T}
 carriers <- as.data.frame(table(flights$carrier))
+
 # We will analyse the next line carefully:
 carriers <- carriers |> dplyr::arrange(desc(Freq))
 
@@ -107,15 +112,17 @@ Boxplot in ggplot2:
 
 ```{r echo = T}
 # Assuming 'dep_delay' might have outliers
-ggplot(flights, aes(y = dep_delay)) + 
+ggplot(flights, 
+       aes(y = dep_delay)) + 
   geom_boxplot(fill = "darkorange") + 
-  labs(y = "dep_delay") + 
+  labs(y = "Departure Delay") + 
   ggtitle("Boxplot of Departure Delay") + 
   theme_bw() + 
   theme(panel.border = element_blank()) + 
   theme(axis.ticks.x = element_blank()) + 
   theme(axis.text.x = element_blank())
 ```
+
 Hm, how many `NA` entries do we have in `flights$dep_delay`?
 
 ```{r echo = T}
@@ -129,6 +136,7 @@ dim(flights)
 flights <- flights[complete.cases(flights), ]
 dim(flights)
 ```
+
 Let's boxplot it now:
 
 ```{r echo = T}
@@ -146,7 +154,8 @@ ggplot(flights, aes(y = dep_delay)) +
 A log scale, perhaps?
 
 ```{r echo = T}
-ggplot(flights, aes(y = log(dep_delay))) + 
+ggplot(flights, 
+       aes(y = log(dep_delay))) + 
   geom_boxplot(fill = "darkorange") + 
   labs(y = "log(dep_delay)") + 
   ggtitle("Boxplot of Departure Delay") + 
@@ -162,6 +171,7 @@ Let's see...
 ```{r echo = T}
 sum(flights$dep_delay <= 0)
 ```
+
 Ok, remove zero observations from `flights$dep_delay`:
 
 ```{r echo = T}
@@ -170,6 +180,7 @@ flights <- flights[flights$dep_delay > 0, ]
 dim(flights)
 ```
 
+Again:
 
 ```{r echo = T}
 ggplot(flights, aes(y = log(dep_delay))) + 
@@ -200,33 +211,40 @@ median(flights$dep_delay)
 ```
 
 ```{r echo = T}
-# Q1
+# Q1: 25%
 quantile(flights$dep_delay, .25)
 ```
+
 
 ```{r echo = T}
 # Q3
 quantile(flights$dep_delay, .75)
 ```
+
 The median:
 
 ```{r echo = T}
 # median
 quantile(flights$dep_delay, .5)
 ```
-IQR is the Interquartile Range:
+
+IQR is the *Interquartile Range*:
 
 ```{r echo = T}
 IQR <- quantile(flights$dep_delay, .75) - quantile(flights$dep_delay, .25)
 print(IQR)
 ```
+
 Named vectors in R... 
 
 ```{r echo = T}
 IQR <- unname(quantile(flights$dep_delay, .75) - quantile(flights$dep_delay, .25))
 print(IQR)
 ```
-In ggplot2, the boxplot whiskers extend to +/- 1.5*IQR by default. Mind the log scale in our example!
+
+In ggplot2, the boxplot whiskers extend to +/- 1.5*IQR by default.
+
+Mind the log scale in our previous charts!
 
 ```{r echo = T}
 ggplot(flights, aes(y = dep_delay)) + 
@@ -242,7 +260,7 @@ ggplot(flights, aes(y = dep_delay)) +
 
 ### 4. A ggplot2 visualization, step by step
 
-Take the following example of a bar plot:
+Data first:
 
 ```{r echo = T}
 carriers <- flights |> 
@@ -253,6 +271,8 @@ carriers <- flights |>
 
 head(carriers, 10)
 ```
+
+Take the following example of a bar plot:
 
 ```{r echo = T}
 ggplot(data = carriers, 
@@ -341,9 +361,10 @@ The documentation of `theme()` is rather important to master ggplot2: [Modify co
 Remember our boxplot of `dep_delay`? Let's study departure delays across carriers now:
 
 ```{r echo = T}
-ggplot(flights, aes(x = carrier, 
-                    y = log(dep_delay), 
-                    fill = carrier)) + 
+ggplot(data = flights, 
+       aes(x = carrier,
+           y = log(dep_delay),
+           fill = carrier)) + 
   geom_boxplot(color = "black") + 
   labs(y = "log(dep_delay)") + 
   ggtitle("Boxplot of Departure Delay") + 
@@ -367,6 +388,24 @@ ggplot(data = flights,
        ) + 
   geom_point() + 
   theme_bw() + 
+  ggtitle("Scatter Plot: Departure vs Arrival Delay") + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_line(linewidth = 1)) + 
+  theme(axis.text.x = element_text(size = 15)) +
+  theme(axis.title.x = element_text(size = 20))
+```
+
+Let's now map a third variable onto this scatter plot: `air_time`!
+
+```{r echo = T}
+ggplot(data = flights, 
+       aes(x = dep_delay,
+           y = arr_delay, 
+           size = air_time, 
+           color = air_time)
+       ) + 
+  geom_point() + 
+  theme_bw() + 
   theme(panel.border = element_blank()) + 
   ggtitle("Scatter Plot: Departure vs Arrival Delay") + 
   theme_bw() + 
@@ -376,14 +415,13 @@ ggplot(data = flights,
   theme(axis.text.x = element_blank())
 ```
 
-Let's now map a third variable onto this scatter plot: `air_time`!
 
 ```{r echo = T}
 ggplot(data = flights, 
        aes(x = dep_delay,
            y = arr_delay, 
-           size = arr_time, 
-           color = arr_time)
+           size = air_time, 
+           color = carrier)
        ) + 
   geom_point() + 
   theme_bw() + 

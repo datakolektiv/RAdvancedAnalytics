@@ -483,7 +483,7 @@ dim(iris)
 
 ```{r echo = T}
 # Peek at the first few flowers
-head(iris)
+head(iris, 10)
 ```
 
 - **`tail()`** lets us glance at the last few flowers, also showing the last 6 rows by default.
@@ -508,7 +508,7 @@ Indexing is like pointing your wand at a specific part of the garden to get a cl
 sepal_lengths <- iris$Sepal.Length  # Using $
 head(sepal_lengths)
 
-sepal_lengths <- iris[, "Sepal.Length"]  # Using [ , ]
+sepal_lengths <- iris[ , "Sepal.Length"]  # Using [ , ]
 head(sepal_lengths)
 ```
 
@@ -549,7 +549,7 @@ While we won't reshape the entire garden today, knowing how to add or remove fea
 ```{r echo = T}
 # Add a new feature
 iris$LargeSepal <- iris$Sepal.Length > mean(iris$Sepal.Length)
-iris
+head(iris)
 ```
 
 - **Removing a Feature:** If we decide we no longer need that feature.
