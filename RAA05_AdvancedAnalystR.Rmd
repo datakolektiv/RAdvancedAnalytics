@@ -1,0 +1,805 @@
+---
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session05"
+author:
+- name: Goran S. Milovanović, PhD
+  affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
+abstract: null
+output:
+  html_notebook:
+    code_folding: show
+    theme: spacelab
+    toc: true
+    toc_float: true
+    toc_depth: 5
+  html_document:
+    toc: true
+    toc_depth: 5
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+---
+
+![](_img/DK_Logo_100.png)
+
+***
+# Module 3: Introduction to Predictive Analytics and Forecasting
+
+## Week 05: Linear Regression
+
+### What do we want to do today?
+
+In this session, we delve into the model of **Linear Regression**, a cornerstone in statistical and predictive analytics. Our journey will begin by understanding the simple yet powerful concept of the linear relationship between a dependent variable and one or more independent variables. Using the versatile `lm()` function in R, we'll learn to build and interpret linear regression models. This session isn’t just about learning to fit a model; it's about applying linear regression to draw meaningful insights from data, making it a pivotal tool in our analytics arsenal. We’ll explore the assumptions behind the model, how to validate them, and the ways to refine our model for better accuracy. This practical approach will ensure that you're not just performing statistical calculations, but also using linear regression as a critical tool in your data analysis toolkit, setting a robust foundation for more complex models and methods in future sessions.
+
+**Feedback** should be send to `goran.milovanovic@datakolektiv.com`. 
+These notebooks accompany the ADVANCED ANALYST - Foundations for Advanced Data Analytics in R [DataKolektiv](http://www.datakolektiv.com/app_direct/DataKolektivServer/) training.
+
+***
+
+### Welcome to R!
+
+![](_img/AdvAnalyticsR2024_Banner.jpeg)
+
+### 1. The data set at hand: `Boston Housing Data` 
+
+We will use the (in)famous [Boston Housing Data data set](https://www.kaggle.com/datasets/schirmerchad/bostonhoustingmlnd) in this session.
+
+```{r echo = T}
+# Load the tidyverse package: ggplot2 is a part of it, but also
+# Load plotly - the new data visualisation superstar!
+library(tidyverse)
+library(Hmisc)
+library(broom)
+
+# The path to your CSV file
+data_dir <- paste0(getwd(), "/_data/")
+filename <- "BostonHousing.csv"
+filepath <- paste0(data_dir, filename)
+
+# Load the data into R
+housing <- readr::read_csv(filepath)
+
+# Glimpse its structure to ensure it has arrived in full
+glimpse(housing)
+```
+
+Understanding the `Boston Housing` data:
+
+- `crim`: per capita crime rate by town
+- `zn`: proportion of residential land zoned for lots over 25,000 sq.ft.
+- `indus`: proportion of non-retail business acres per town.
+- `chas`: Charles River dummy variable (1 if tract bounds river; 0 otherwise)
+- `nox`: nitric oxides concentration (parts per 10 million)
+- `rm`: average number of rooms per dwelling
+- `age`: proportion of owner-occupied units built prior to 1940
+- `dis`: weighted distances to five Boston employment centers
+- `rad`: index of accessibility to radial highways
+- `tax`: full-value property-tax rate per $10,000
+- `ptratio`: pupil-teacher ratio by town
+- `b`: 1000(Bk - 0.63)^2 where Bk is the proportion of blacks by town
+- `lstat`: % lower status of the population
+- `medv`: Median value of owner-occupied homes in $1000’s
+
+
+```{r echo = T}
+# Generate summary statistics for the dataset
+summary(housing)
+```
+**Our task today will be to build a statistical learning model that predicts `medv` from a set of suitable predictors from the Boston Housing Data data set.**
+
+### 2. Variance, Covariance, and Correlation
+
+#### 2.1 Variance
+
+Variance is a statistical measure that tells us how much the values of a data set are spread out from their mean. In simpler terms, variance measures the average squared deviations from the mean, giving us an insight into the dispersion or spread of the data set.
+
+To compute the variance of a random variable, follow these steps:
+
+- Calculate the Mean: Find the average of all data points.
+- Compute Squared Deviations: For each data point, subtract the mean and square the result.
+- Average the Squared Deviations: Sum all the squared deviations and divide by $n−1$ where $n$ is the sample size:
+
+$$s^2 = \frac{1}{n-1} \sum_{i=1}^n (x_i - \overline{x})^2$$
+
+Why do we use $s^2$? Because $s$ is typically used for **standard deviation**, the square root of variance:
+
+$$s = \sqrt{\frac{1}{n-1} \sum_{i=1}^n (x_i - \overline{x})^2}$$
+
+**R Code Example for Calculating Variance**
+
+Let’s write the R code to calculate the variance of Sepal.Length from the `iris` dataset. We'll follow the steps listed above:
+
+```{r echo = T}
+# Load the iris dataset
+data(iris)
+
+# Extract the Sepal.Length variable
+sepal_lengths <- iris$Sepal.Length
+
+# Step 1: Calculate the mean of Sepal.Length
+mean_sepal_length <- mean(sepal_lengths)
+
+# Step 2: Compute squared deviations from the mean
+squared_deviations <- (sepal_lengths - mean_sepal_length)^2
+
+# Step 3: Average the squared deviations
+variance_sepal_length <- sum(squared_deviations) / (length(sepal_lengths) - 1)
+
+# Print the calculated variance
+variance_sepal_length
+```
+
+Or we can simply use `var()` in R...
+
+```{r echo = T}
+var(iris$Sepal.Length)
+```
+
+Or `sd()` for standard deviation:
+
+```{r echo = T}
+sd(iris$Sepal.Length)
+```
+
+#### 2.2 Linear relationships
+
+We will start by inspecting two variables from the iris data set: `Sepal.Length` and `Petal.Length`.
+
+To create a grouped boxplot of both `Sepal.Length` and `Petal.Length` from the `iris` data set in the same chart, we first need to reformat the data to a **long format** using the `pivot_longer()` function from the `tidyr` package (which is a part of `tidyverse`, of course): 
+
+```{r echo = T}
+# Reshape the data from wide to long format
+iris_long <- iris |>
+  dplyr::select(Sepal.Length, Petal.Length) |>
+  pivot_longer(cols = c(Sepal.Length, Petal.Length),
+               names_to = "Feature",
+               values_to = "Length")
+iris_long
+```
+
+
+```{r echo = T}
+# Create a grouped boxplot
+ggplot(iris_long, aes(x = Feature, 
+                      y = Length, 
+                      color = Feature,
+                      fill = Feature)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "Length") +
+  ggtitle("Grouped Boxplot of Sepal and Petal Length") +
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+```{r echo = T}
+ggplot(iris_long, aes(x = Length, 
+                      color = Feature,
+                      fill = Feature)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 position = "identity", 
+                 alpha = 0.5, 
+                 binwidth = 0.2, 
+                 colour = "black") +
+  geom_density(alpha = 0.75, adjust = 1.5) +
+  facet_wrap(~ Feature, scales = "free") +
+  labs(x = "Length", y = "Density") +
+  ggtitle("Histograms with Density Overlays for Sepal and Petal Length") + 
+    theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(axis.ticks.x = element_blank()) + 
+  theme(axis.text.x = element_blank())
+```
+
+**Q.** Is there a linear relationship between these two variables? Let’s see:
+
+```{r echo = T}
+# Scatter plot with ggplot2
+ggplot(iris, aes(x = Sepal.Length, y = Petal.Length)) +
+  geom_point() +
+  labs(title = "Sepal Length vs Petal Length",
+       x = "Sepal Length",
+       y = "Petal Length") +
+  theme_bw() +
+  theme(panel.border = element_blank()) + 
+  theme(plot.title = element_text(size = rel(0.85)),
+        axis.title = element_text(size = rel(0.75))
+        )
+```
+
+One could think there is something going on here. But:
+
+```{r echo = T, message = F}
+ggplot(data = iris, aes(x = Sepal.Length,
+                        y = Petal.Length,
+                        color = Species)
+       ) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = F, linewidth = .25) +
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(plot.title = element_text(size = rel(0.85)),
+        axis.title = element_text(size = rel(0.75))
+        )
+```
+
+There seems to be more than one important line to describe this data set... However, we will simplify for now:
+
+```{r echo = T, message = F}
+ggplot(data = iris, aes(x = Sepal.Length,
+                        y = Petal.Length)) + 
+  geom_point(color = "black", size = 1.5) + 
+  geom_point(color = "white", size = 1) +
+  geom_smooth(method = lm, se = F, linewidth = .25, color = "red") +
+  theme_bw() + 
+  theme(panel.border = element_blank())
+```
+
+#### 2.3 Covariance, Standardization, and Correlation
+
+Leaving aside the important question of whether there is a linear relationship between `Sepal.Length` and `Petal.Length` in `iris` for now, we ask: **if it was a linear relationship**, how good a linear relationship would it make? The answer is provided by computing the Pearson’s coefficient of linear correlation.
+
+First things first. What is this:
+
+```{r echo = T}
+cov(iris$Sepal.Length, iris$Petal.Length)
+```
+
+**Covariance**. Given two random variables (RVs), $X$ and $Y$, their (sample) covariance is given by:
+
+$$cov(X,Y) = E[(X-E[X])(Y-E[Y])] = \frac{(X-\bar{X})(Y-\bar{Y})}{N-1}$$
+where $E[]$ denotes the *expectation* (the *mean*, if you prefer), $\bar{X}$ is the mean of $X$, $\bar{Y}$ is the mean of $Y$, and $N$ is the sample size.
+
+Pearson's coefficient of correlation is nothing else than a covariance between $X$ and $Y$ upon their *standardization*. The standardization of a RV - widely known as a variable *z-score* - is obtained upon subtracting all of its values from the mean, and dividing by the standard deviation; for the **i**-th observation of $X$:
+
+$$z(x_i) = \frac{x_i-\bar{X}}{\sigma}$$
+
+Thus,
+
+``` {r echo = T}
+zSepalLength <- (iris$Sepal.Length - mean(iris$Sepal.Length))/sd(iris$Sepal.Length)
+zPetalLength <- (iris$Petal.Length-mean(iris$Petal.Length))/sd(iris$Petal.Length)
+cov(zSepalLength, zPetalLength)
+```
+
+is the correlation of `Sepal.Length` and `Petal.Length`; let's check with {base} R function `cor()` which computes the correlation:
+
+``` {r echo = T}
+cor(iris$Sepal.Length, iris$Petal.Length, method = "pearson")
+```
+
+Right. There are many formulas that compute `r`, the correlation coefficient; however, understanding that is simply the covariance of standardized RVs is essential. Once you know to standardize the variables and how to compute covariance (and that is easy), you don't need to care about expressions like:
+
+$$r_{XY} = \frac{N\sum{XY}-(\sum{X})(\sum{Y})}{\sqrt{[N\sum{X^2}-(\sum{X})^2][N\sum{Y^2}-(\sum{Y})^2]}}$$
+
+This and similar expressions are good, and especially for two purposes: first, they will compute the desired value of the correlation coefficient in the end, that's for sure, and second, writing them up in `RMarkdown` really helps mastering $\LaTeX$. Besides these roles they play, there is really nothing essentially important in relation to them.
+
+Somewhat easier to remember:
+
+$$r_{XY} = \frac{cov(X,Y)}{\sigma(X)\sigma(Y)}$$
+- the covariance of $X$ and $Y$, divided by the product of their standard deviations.
+
+There's a nice `scale()` function that will quicken-up the computation of *z-scores* in R for you:
+
+``` {r echo = T}
+zSepalLength1 <-  scale(iris$Sepal.Length, center = T, scale = T)
+sum(zSepalLength1 == zSepalLength) == length(zSepalLength)
+```
+The {base} `cor()` function produces correlation matrices too:
+
+``` {r echo = T}
+cor(iris[ , c(1:4)])
+```
+
+### 3. Introduction to Simple Linear Regression
+
+We now begin considering the mathematical modeling of data in R. The first - and arguably the simplest - statistical model that we will face is the *Simple Linear Regression Model*. In a typical simple linear regression setting, we have one continuous *predictor* -  also known as the *independent variable* - and one continuous *criterion* - a.k.a. the *dependent variable*. Both these are assumed to be unbounded, i.e. taking values across the whole domain of real numbers. *Continuity* here should be understood precisely as having measurements from an *interval* or *ratio scale*.
+
+Linear regression *does not imply any causality*; it is up to the user of the model to impose causal assumptions, i.e. which variable takes the role of the criterion and which variable is assigned as a predictor. It is not even necessary to impose any such assumptions in order to obtain a valid linear regression model, although it is very customary to have some hypothesized direction of causality in order to discuss prediction meaningfully.
+
+#### 3.1 Linear Correlation, Assumption of Linearity, and Causality
+
+``` {r echo = T}
+## Pearson correlation in R {base}
+cor1 <- cor(iris$Sepal.Length, iris$Petal.Length, 
+            method = "pearson")
+cor1
+```
+
+With $R$ = .87 we hope to be able to say that there is a linear relationship, right? Time to learn something important about statistics: you can never rely on a conclusion that was reached by taking the values of the statistics *prima facie* while doing nothing else. Take a look at the scatter plot of these two variables again:
+
+``` {r echo = T, message = F}
+# Let's test the assumption of linearity:
+ggplot(iris, aes(x = Sepal.Length, y = Petal.Length)) +
+  geom_point(size = 1.5, color = 'black') +
+  geom_point(size = 1, color = 'white') +
+  geom_smooth(method = 'lm', size = .25, color = 'red', se = F) +
+  ggtitle('Sepal Length vs Petal Length') +
+  theme_bw() + 
+  theme(panel.border = element_blank())
+```
+
+We have included the best fitting regression line in the scatter plot; does the relationship between the two variable really looks *linear*? Let's remind ourselves of what we have already discovered:
+
+``` {r echo = T, message = F}
+ggplot(data = iris, aes(x = Sepal.Length,
+                        y = Petal.Length,
+                        color = Species)
+       ) + 
+  geom_point(size = 1.5) +
+  geom_smooth(method = 'lm', size = .25, se = F) + 
+  ggtitle('Sepal Length vs Petal Length') + 
+  theme_bw() + 
+  theme(panel.border = element_blank())
+```
+
+Interesting: there seem to be *more than one* linear relationship in this scatter plot, i.e. one per each group from the `iris` data set. What do we do, except for concluding that the *assumption of linearity* has failed? We will introduce a fix in one of our next sessions, showing how a multiple regression model can account for situations like the present one; in the meantime, pretend like nothing has happened..
+
+By the way, is the $R$ coefficient of linear correlation statistically significant?
+
+``` {r echo = T}
+# Is Pearson's product-moment correlation coefficient significant?
+cor2 <- Hmisc::rcorr(iris$Sepal.Length, # {Hmisc}
+                     iris$Petal.Length,
+                     type="pearson")
+# correlations
+cor2$r
+```
+
+``` {r echo = T}
+cor2$r[1, 2] # Ok, the one we're looking for
+```
+
+``` {r echo = T}
+cor2$P[1, 2] # significant at
+```
+
+Well, $R$ is statistically significant indeed. Most social science students would typically conclude that everything's superfine here... Don't be lazy: (a) do the EDA of your variables before modeling, (b) inspect the scatter plot in *smart ways* - if there are natural groupings expected in the data set, use colors or shapes to mark them. In spite of the high, statistically significant Pearson's correlation coefficient between `Sepal.Length` and `Petal.Length`, this relationship violates linearity, and a model more powerful than simple linear regression is needed.
+
+However, let's pretend we've never seen this and start doing simple linear regression in R.
+
+#### 3.2 Simple Linear Regression: The Model
+
+We will now consider the following statistical model of a linear relationship between two random variables:
+
+$$Y = \beta_0 + \beta_1X_1 + \epsilon $$
+
+- $Y$ is the variable whose values we would like to be able to predict - and it is called a *criterion* or a *dependent variable* - from
+- $X$, which is called a *predictor*, or an *independent variable* in the Simple Linear Regression setting;
+- $\beta_0$ and $\beta_1$ are *model parameters*, of which the former represents the *intercept* while the later is the *slope* of the regression line (**note:** besides $\epsilon$, what the equation represents is nothing else but the equation of a straight line in a plane that you have seen a dozen times in high school); finally,
+- $\epsilon$ represents the model error term, which we will discuss in length in our Session.
+
+If we assume that the relationship between $X$ and $Y$ is indeed linear - and introduce some additional assumptions that we will discuss later on - the following question remains:
+
+> What values of $\beta_0$ and $\beta_1$ would pick a line in a plane spawned by $X$ and $Y$ values so that it describes the assumed linear relationship between them the best?
+
+Again:
+
+``` {r echo = T, message = F}
+# Let's test the assumption of linearity:
+ggplot(iris, aes(x = Sepal.Length, y = Petal.Length)) +
+  geom_point(size = 1.5, color = 'black') +
+  geom_point(size = 1, color = 'white') +
+  geom_smooth(method = 'lm', size = .25, color = 'red', se = F) +
+  ggtitle('Sepal Length vs Petal Length') +
+  theme_bw() + 
+  theme(panel.border = element_blank())
+```
+
+The line in this `{ggplot2}` scatter plot is the best fitting line for the assumed linear relationship between `iris$Sepal.Length` (taken to be a predictor, X-axis) and `iris$Petal.Length` (taken to be a criterion, Y-axis). {ggplot2} computed the best fitting line for us: **how?** Well, in the end, it did it by selecting the *optimal* values for $\beta_0$ and $\beta_1$. It is our task in this and the following sessions to figure out how does that selection of optimal parameter values takes place. 
+
+#### 3.3 Simple Linear Regression w. `lm()` in R
+
+In R we have the `lm()` function - short for *linear model* - to fit all different kinds of models in the scope of this model framework to the data:
+
+``` {r echo = T}
+### --- Linear Regression with lm()
+# Predicting: Petal Length from Sepal Length
+reg <- lm(Petal.Length ~ Sepal.Length, 
+          data=iris) 
+class(reg)
+```
+
+The `Petal.Length ~ Sepal.Length` is called a *formula*, and you should learn more about how formulas in R are syntactically composed. The simplest possible formula, like this one, simply informs R that we wish to model `Petal.Length` - standing to the left of `~` - by taking only `Sepal.Length` - standing to the right - as a predictor. For those who are already familiar with a multiple linear regression setting, doing `A ~ B + C` means calling for a linear model with `A` as a dependent variable and `B`, `C` as predictors. We will let these things complicate in the future, don't worry. The object `reg` stores the results of our attempt at a simple linear regression model, and has its own class of `lm`, as you can observe following the call to `class(reg)`.
+
+Let's inspect the result more thoroughly:
+
+``` {r echo = T}
+summary(reg)
+```
+
+The output provides: 
+
+- a call that has generated the linear model object `reg`;
+- a basic overview of descriptive statistics for model residuals;
+- a table of regression coefficients: there are only two for the simple linear regression model, namely the model intercept and the slope (i.e. the regression coefficient for the one and only predictor in the model), and the raw (not standardized) values of the predictors are reported in the `Estimate` column, accompanied by respective standard errors, t-test against zero, and the probabilities of commiting to a $Type I$ error in drawing conclusions from these t-tests;
+- Residual Standard Error;
+- Multiple $R^2$ and the Adjusted $R^2$ values;
+- The $F$ test: ratio of variances computed from the *regression* and *residual SSEs*, with the respective number of degrees of freedom and its p-value. 
+
+To isolate the regression coefficients from the model:
+
+``` {r echo = T}
+coefsReg <- coefficients(reg)
+coefsReg
+```
+
+``` {r echo = T}
+slopeReg <- coefsReg[2]
+print(paste0("Slope: ", slopeReg))
+interceptReg <- coefsReg[1]
+print(paste0("Intercept: ", interceptReg))
+```
+
+You can also work with the `summary()` of the `lm` class as an object:
+
+``` {r echo = T}
+sReg <- summary(reg)
+str(sReg)
+```
+
+For example:
+
+``` {r echo = T}
+sReg$r.squared
+```
+Correlation is then:
+
+``` {r echo = T}
+sqrt(sReg$r.squared)
+```
+
+``` {r echo = T}
+sReg$fstatistic
+```
+
+``` {r echo = T}
+sReg$coefficients
+```
+
+Now, the distribution of residuals - the $\epsilon$ in the model equation - to be discussed in the Session:
+
+``` {r echo = T}
+# Assuming sReg is your linear model object and sReg$residuals contains the residuals
+# First, create a data frame for plotting
+residuals_data <- data.frame(Residuals = sReg$residuals)
+
+# Create the histogram with ggplot2
+ggplot(residuals_data, aes(x = Residuals)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 bins = 20, 
+                 fill = "orange", 
+                 color = "black") +  # Histogram
+  geom_density(color = "blue", 
+               linetype = "dashed", 
+               size = 1) +  # Density line
+  labs(title = "Residuals", 
+       x = "Residuals", 
+       y = "Density") +  # Labels
+  theme_bw() + 
+  theme(panel.border = element_blank())
+```
+
+### 4. Simple Linear Regression: Model Assumptions
+
+We will spend some time in inspecting the validity of this linear regression model as a whole. Usually termed *model diagnostics*, the following procedures are carried over to ensure that the model assumptions hold. Unfortunately, even for a model as simple as a simple linear regression, testing for model assumptions tends to get nasty all the way down... Most of the criteria cannot be judged by simply assessing the values of the respective statistics, and one should generally consider the model diagnostics step as a mini-study on its own - and the one going well beyond the time spent to reach the conclusions of the model performance on the data set, because none of one's conclusions on the data set truly hold from a model whose assumptions are not met. Sadly, this is a fact that is overlooked too often in contemporary applied statistics.
+
+#### 4.1 The Linearity Assumption
+
+In fact, we have already tested for this:
+
+``` {r echo = t, message = F}
+#### Test 1: Linearity assumption
+# Predictor vs Criterion {ggplot2}
+ggplot(data = iris, aes(x = Sepal.Length,
+                        y = Petal.Length,
+                        color = Species)
+       ) + 
+  geom_point(size = 1.5) +
+  geom_smooth(method = 'lm', size = .25, se = F) + 
+  ggtitle('Sepal Length vs Petal Length') + 
+  theme_bw() + 
+  theme(panel.border = element_blank())
+```
+
+The linearity assumption is obviously not satisfied!
+
+#### 4.2 The Normality of Residuals
+
+We have already played with this too, in a different way only:
+
+```{r echo = t, fig.width = 5, fig.height = 5}
+reg <- lm(Petal.Length ~ Sepal.Length, 
+          data = iris)
+resStReg <- rstandard(reg)
+qqnorm(resStReg)
+qqline(resStReg, col = "red")
+```
+
+What is `rstandard()`? See: [standardized residual](http://www.r-tutor.com/elementary-statistics/simple-linear-regression/standardized-residual). We will discuss this in the session as we introduce the concept of *leverage*.
+
+Let' see what does the Shapiro-Wilk tells:
+
+``` {r echo = T}
+shapiro.test(reg$residuals)
+```
+
+- and it seems like this assumption is met.
+
+#### 4.3 Constant variance (or Homoscedasticity)
+
+The model error (i.e. variance, computed from the model residuals) should be constant on all levels of the criterion:
+
+``` {r echo = T, message = F}
+# Predicted vs. residuals {ggplot2}
+predReg <- predict(reg) # get predictions from reg
+resReg <- residuals(reg) # get residuals from reg
+plotFrame <- data.frame(predicted = predReg,
+                        residual = resReg)
+# plot w. {ggplot2}
+ggplot(data = plotFrame,
+       aes(x = predicted, y = residual)) +
+  geom_point(size = 1.5, 
+             colour = 'blue') +
+  geom_smooth(method = 'lm',
+              size = .25,
+              alpha = .25, 
+              color = "red") + 
+  ggtitle("Predicted vs Residual") + 
+  xlab("Predicted") + ylab("Residual") + 
+  theme_bw() +
+  theme(legend.position = "none") + 
+  theme(panel.border = element_blank())
+```
+
+This can be confusing if one does not recall that we have fitted the model by having only one sample of observations at hand. Imagine drawing a sample of `Sepal.Length` and `Petal.Length` values repeatedly and trying to predict one from another from a previously fitted simple linear regression model. It is quite probable that we would get at observing varying residuals (model errors) for different draws of `Petal.Length` observed on the same level `Sepal.Length` upon prediction. However, the distribution of these residuals, more precisely: *its variance*, must be constant across all possible levels of `Petal.Length`. That is why we choose to inspect the scatter plot of predicted `Petal.Length` values vs. their respective residuals. Essentially, one should not be able to observe any regularity in this plot; if it turns out that any pattern emerges, i.e. that it is possible to predict the residuals from the levels of criterion - the simple linear model should abandoned.
+
+Our simple linear regression model obviously suffers from *heteroscedasticity*, or a lack of constant variance across the measurements. The cause of the heteroscedasticity in this case is related to the existence of clusters of related observations, determined by the type of flower in the `iris` data set. 
+
+#### 4.4 No outliers or influential cases
+
+There are a plenty of proposed procedures to detect influential cases in simple linear regression. The `influence.mesures()` function will return most of the interesting statistics in this respect:
+
+``` {r echo = T}
+infMeas <- influence.measures(reg)
+class(infMeas)
+```
+
+``` {r echo = T}
+str(infMeas)
+```
+
+What you need to extract from `infMeans` now is the `$infmat` field:
+
+``` {r echo = T}
+# as data.frame
+infReg <- as.data.frame(influence.measures(reg)$infmat)
+head(infReg)
+```
+
+Sometimes, people focus on *Cook's distances*: they are used to detect the influential cases by inspecting the effect of removal of each data point on the linear model. Cook and Weisberg (1982) consider values greater than 1 are troublesome:
+
+``` {r echo = T}
+wCook <- which(infReg$cook.d >1)
+wCook # we seem to be fine here
+```
+
+The *leverage* tells us how influential a data point is by measuring how *unusual* or *atypical* is the combination of predictor values - in case of multiple linear regression - for that observation; in case of simple linear regression, try to think of it as simply a measure of how "lonely" a particular point is found on the predictor scale. For an introductory text I recommend: [Influential Observations, from David M. Lane's Online Statistics Education: An Interactive Multimedia Course of Study](https://onlinestatbook.com/2/regression/influential.html); for details, see: [Leverage in simple linear regression](https://math.stackexchange.com/questions/3325504/leverage-in-simple-linear-regression).
+
+``` {r echo = T}
+# - Leverage: hat values
+# - Average Leverage = (k+1)/n, k - num. of predictors, n - num. observations
+# - Also termed: hat values, range: 0 - 1
+# - see: https://en.wikipedia.org/wiki/Leverage_%28statistics%29
+# - Various criteria (twice the average leverage, three times the average leverage...)
+# - Say, twice the leverage:
+k <- 1 # - number of predictors
+n <- dim(iris)[1] # - number of observations
+wLev <- which(infReg$hat > 2*((k + 1)/n))
+print(wLev)
+```
+
+Finally, to inspect the influential cases visually, we can produce the Influence Plot, combining information on standardized residuals, leverage, and Cook's distances:
+
+``` {r echo = T}
+## Influence plot
+plotFrame <- data.frame(residual = resStReg,
+                        leverage = infReg$hat,
+                        cookD = infReg$cook.d)
+ggplot(plotFrame,
+       aes(y = residual,
+           x = leverage)) +
+  geom_point(size = plotFrame$cookD*100, shape = 1, color = 'blue') +
+  ggtitle("Influence Plot\nSize of the circle corresponds to Cook's distance") +
+  theme(plot.title = element_text(size=8, face="bold")) +
+  ylab("Standardized Residual") + xlab("Leverage") + 
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(plot.title = element_text(hjust = .5))
+```
+
+#### 4.5 No autocorrelation in residuals
+
+The final twist is related to the assumption that the model errors are not *autocorrelated*. The autocorrelation of a variable exists when its previously measured values are correlated with its subsequent measurements. The autocorrelation can be computed for different values of the *lag*, defining how far apart are the "present" and "past" observations of a variable assumed to be. For example, given $X = x_1, x_2, ..., x_n$, one can compute the autocorrelation at lag of 1 by correlating $X_i$ with $X_{i-1}$, or at lag of 2 by correlating  $X_i$ with $X_{i-2}$, etc.
+
+### 5. Multiple Linear Regression: several continuous predictors
+
+#### 5.1 The `stackloss` problem
+
+The following example is a modification of the [multiple-linear-regression section](http://www.r-tutor.com/elementary-statistics/multiple-linear-regression) from [R Tutorial](http://www.r-tutor.com/).
+
+
+```{r echo = T}
+data(stackloss)
+str(stackloss)
+```
+
+The description of the `stackloss` dataset is found in the [documentation](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/stackloss.html):
+
+- `Water Temp` is the temperature of cooling water circulated through coils in the absorption tower; 
+- `Air Flow` is the flow of cooling air;
+- `Acid Conc.` is the concentration of the acid circulating;
+- `stack.loss` (the outcome variable) is 10 times the percentage of the ingoing ammonia to the plant that escapes from the absorption column unabsorbed; that is, an (inverse) measure of the overall efficiency of the plant.
+
+```{r echo = T}
+stacklossModel = lm(stack.loss ~ Air.Flow + Water.Temp + Acid.Conc., 
+                    data = stackloss)
+summary(stacklossModel)
+```
+
+#### 5.2 `broom::glance()`, `broom::tidy()`, and confidence intervals
+
+```{r echo = T}
+broom::glance(stacklossModel)
+```
+
+```{r echo = T}
+broom::tidy(stacklossModel)
+```
+
+Prediction for one single new data point:
+
+```{r echo = T}
+# predict new data
+obs = data.frame(Air.Flow = 72, 
+                 Water.Temp = 20, 
+                 Acid.Conc. = 85)
+predict(stacklossModel, obs)
+```
+
+The `confint()` functions works as usual, for 95% CI...
+
+```{r echo = T}
+confint(stacklossModel, level = .95) # 95% CI
+```
+
+... as well as for %99 CI:
+
+```{r echo = T}
+confint(stacklossModel, level = .99) # 99% CI
+```
+
+#### 5.3 Multicolinearity in Multiple Regression
+
+That crazy thing with multiple regression: if the predictors are not correlated at all, why not run a series of simple linear regressions? On the other hand, if the predictors are highly correlated, problems with the estimates arise... John Fox's `{car}` package allows us to compute the *Variance Inflation Factor* quite easily:
+
+```{r echo = T}
+VIF <- vif(stacklossModel)
+VIF
+```
+
+The Variance Inflation Factor (VIF) measures the increase in the *variance* of a regression coefficient due to colinearity. It's square root (`sqrt(VIF)`) tells us how much larger a standard error of a regression coefficient is compared to a hypothetical situation where there were no correlations with any other predictors in the model. **NOTE:** The lower bound of VIF is 1; there is no upper bound, but VIF > 2 typically indicates that one should be concerned.
+
+### 6. Case Study: Predicting `medv` in the Boston Housing Data 
+
+Let's begin with some EDA, just to warm up:
+
+```{r echo = T}
+# Select only the numerical predictors and exclude any categorical predictors that need dummy coding
+numerical_vars <- housing %>% 
+  dplyr::select(-chas)
+
+# Reshape the data from wide to long format for easy plotting using tidyr
+housing_long <- numerical_vars %>% 
+  tidyr::pivot_longer(cols = everything(), 
+                      names_to = "variable", 
+                      values_to = "value")
+
+# Histograms for all numerical variables
+ggplot(boston_housing_long, aes(x = value)) +
+  geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
+  facet_wrap(~variable, scales = "free_x") +
+  labs(title = "Histograms of Numerical Variables", 
+       x = "Value", 
+       y = "Frequency") +
+  theme_minimal()
+```
+
+```{r echo = T}
+# Scatter plots to visualize relationships between `medv` and other predictors
+# Assuming `medv` is included in the numerical_vars
+numerical_vars %>%
+  pivot_longer(cols = -medv, 
+               names_to = "feature", 
+               values_to = "value") %>%
+  ggplot(aes(x = value, y = medv)) +
+  geom_point(alpha = 0.6, color = "red") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  facet_wrap(~feature, scales = "free") +
+  labs(title = "Scatter Plots of MEDV against Other Predictors", 
+       x = "Predictor Value", y = "MEDV") +
+  theme_minimal()
+```
+
+```{r echo=TRUE}
+# Exclude the 'chas' variable
+model_data <- housing %>% 
+  select(-chas)  # Removing the 'chas' variable
+
+# Fit the linear regression model
+model <- lm(medv ~ ., data = model_data)
+
+# Display the summary of the model
+summary(model)
+```
+##### Statistical Report on Multiple Linear Regression Analysis: Boston Housing Dataset
+
+###### Model Overview
+
+The multiple linear regression model was built to predict the median value of owner-occupied homes (`medv`) using various other numerical predictors available in the Boston Housing data set. The model excludes the `chas` variable as it is categorical and not required for the analysis. The resulting model shows a significant ability to explain the variability in `medv`, as evidenced by the statistical outputs.
+
+###### Model Fit
+
+- **Multiple R-squared**: 0.7355. This value suggests that approximately 73.55% of the variance in `medv` is explained by the predictors in the model, indicating a strong fit.
+
+- **F-statistic**: The F-statistic is 114.3 with a p-value of less than 2.2e-16, strongly suggesting that the model is statistically significant and that the predictors, as a group, have a strong linear relationship with the response variable `medv`.
+
+###### Coefficients Analysis:
+
+- **Significant Predictors**:
+
+  - **Crim** (per capita crime rate): The coefficient of -0.113 suggests that a unit increase in the crime rate per capita is associated with a decrease in `medv` by 0.113 thousand dollars, holding all other factors constant.
+  - **ZN** (proportion of residential land zoned): A positive coefficient (0.047) indicates that increasing the proportion of residential land zoned for large lots increases `medv`.
+  - **NOX** (nitric oxides concentration): This has a significant negative impact on `medv` (-17.367), suggesting that higher pollution levels decrease the median value of homes.
+  - **RM** (average number of rooms per dwelling): With a coefficient of 3.850, this variable strongly positively affects `medv`, implying that more rooms generally increase the home's value.
+  - **DIS** (distances to employment centres): The negative coefficient (-1.485) suggests that homes closer to employment centers have higher values, possibly due to the desirability of reduced commute times.
+  - **RAD** (accessibility to radial highways): This has a positive coefficient (0.328), indicating better accessibility increases home values.
+  - **TAX** (property-tax rate): Higher tax rates are associated with a decrease in `medv` (-0.0137).
+  - **PTRATIO** (pupil-teacher ratio): A higher ratio is associated with a lower `medv` (-0.991), possibly reflecting perceptions of poorer school quality.
+  - **B** (proportion of blacks by town): This shows a small positive effect on `medv` (0.0097).
+  - **LSTAT** (% lower status of the population): The negative coefficient (-0.534) is significant, showing that a higher proportion of lower-status residents is associated with lower home values.
+
+- **Insignificant Predictors**:
+  - **INDUS** and **AGE** did not show statistically significant effects on `medv` at conventional levels, suggesting they may not be useful in this model context.
+
+### Videos
+
+- [VIDEO - In depth, highly recommended: Exploring bivariate numerical data, Khan Academy](https://www.khanacademy.org/math/statistics-probability/describing-relationships-quantitative-data)
+- [The Main Ideas of Fitting a Line to Data (The Main Ideas of Least Squares and Linear Regression, StatQuest with Josh Starmer](https://www.youtube.com/watch?v=PaFPbb66DxQ&list=PLblh5JKOoLUIzaEkCLIUxQFjPIlapw8nU&index=1)
+- [Linear Regression, Clearly Explained!!!, StatQuest with Josh Starmer](https://www.youtube.com/watch?v=nk2CQITm_eo&list=PLblh5JKOoLUIzaEkCLIUxQFjPIlapw8nU&index=2)
+- [Linear Regression in R, Step-by-Step, StatQuest with Josh Starmer](https://www.youtube.com/watch?v=u1cc1r_Y7M0&list=PLblh5JKOoLUIzaEkCLIUxQFjPIlapw8nU&index=3)
+- [Multiple Regression, Clearly Explained!!!, StatQuest with Josh Starmer](https://www.youtube.com/watch?v=zITIFTsivN8&list=PLblh5JKOoLUIzaEkCLIUxQFjPIlapw8nU&index=4)
+
+
+### R Markdown
+
+[R Markdown](https://rmarkdown.rstudio.com/) is what I have used to produce this beautiful Notebook. We will learn more about it near the end of the course, but if you already feel ready to dive deep, here's a book: [R Markdown: The Definitive Guide, Yihui Xie, J. J. Allaire, Garrett Grolemunds.](https://bookdown.org/yihui/rmarkdown/) 
+
+
+
+***
+Goran S. Milovanović
+
+DataKolektiv, 2024.
+
+contact: goran.milovanovic@datakolektiv.com
+
+![](_img/DK_Logo_100.png)
+
+***
+License: [GPLv3](http://www.gnu.org/licenses/gpl-3.0.txt)
+This Notebook is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This Notebook is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this Notebook. If not, see <http://www.gnu.org/licenses/>.
+
+***
+

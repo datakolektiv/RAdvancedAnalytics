@@ -1,0 +1,455 @@
+---
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session04"
+author:
+- name: Goran S. Milovanović, PhD
+  affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
+abstract: null
+output:
+  html_notebook:
+    code_folding: show
+    theme: spacelab
+    toc: true
+    toc_float: true
+    toc_depth: 5
+  html_document:
+    toc: true
+    toc_depth: 5
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+---
+
+![](_img/DK_Logo_100.png)
+
+***
+# Module 2: Data Visualization and Exploratory Analytics
+
+## Week 04: Exploratory Analytics and Visualization continued in Plotly + A/B Testing
+
+**Feedback** should be send to `goran.milovanovic@datakolektiv.com`. 
+These notebooks accompany the ADVANCED ANALYST - Foundations for Advanced Data Analytics in R [DataKolektiv](http://www.datakolektiv.com/app_direct/DataKolektivServer/) training.
+
+***
+
+### Welcome to R!
+
+![](_img/AdvAnalyticsR2024_Banner.jpeg)
+
+### What do we want to do today?
+
+Our task in this session is to learn the basics of the [Plotly](https://plotly.com/r/) package, the industry standard in *interactive data visualization*. We will learn the basics of Plotly by diving even deeper into **Exploratory Data Analysis** of course! Interactive data visualizations are especially important today when means of delivering data analytics are mostly web-based and rarely based on print or slide-decks alone. One day, if you decide to continue your journey in R, you might realize just how powerful is the combination of Plotly with RStudio [Shiny web applications](https://www.rstudio.com/products/shiny/)..! We will also start introducing the concept of A/B testing in data analytics in this session, beginning with basic t-test for differences between means of two independent groups.
+
+**NOTE on the usage of pipe operator in this session:** In this session, I will use the `%>%` pipe operator, popular in [dplyr](https://dplyr.tidyverse.org/) and originally developed in the  [magrittr](https://cran.r-project.org/web/packages/magrittr/vignettes/magrittr.html) package, in place of the previously used "new" native R pipe operator `|>`. 
+
+### 1. The data set at hand: `Boston Housing Data` 
+
+We will use the (in)famous [Boston Housing Data data set](https://www.kaggle.com/datasets/schirmerchad/bostonhoustingmlnd) in this session.
+
+```{r echo = T}
+# Load the tidyverse package: ggplot2 is a part of it, but also
+# Load plotly - the new data visualisation superstar!
+library(tidyverse)
+library(plotly)
+
+# The path to your CSV file
+data_dir <- paste0(getwd(), "/_data/")
+filename <- "BostonHousing.csv"
+filepath <- paste0(data_dir, filename)
+
+# Load the data into R
+housing <- readr::read_csv(filepath)
+
+# Glimpse its structure to ensure it has arrived in full
+glimpse(housing)
+```
+
+Understanding the `Boston Housing` data:
+
+- `crim`: per capita crime rate by town
+- `zn`: proportion of residential land zoned for lots over 25,000 sq.ft.
+- `indus`: proportion of non-retail business acres per town.
+- `chas`: Charles River dummy variable (1 if tract bounds river; 0 otherwise)
+- `nox`: nitric oxides concentration (parts per 10 million)
+- `rm`: average number of rooms per dwelling
+- `age`: proportion of owner-occupied units built prior to 1940
+- `dis`: weighted distances to five Boston employment centers
+- `rad`: index of accessibility to radial highways
+- `tax`: full-value property-tax rate per $10,000
+- `ptratio`: pupil-teacher ratio by town
+- `b`: 1000(Bk - 0.63)^2 where Bk is the proportion of blacks by town
+- `lstat`: % lower status of the population
+- `medv`: Median value of owner-occupied homes in $1000’s
+
+
+```{r echo = T}
+# Generate summary statistics for the dataset
+summary(housing)
+```
+### 2. Relationship Between Number of Rooms and Home Value
+
+**EDA Question:** How does the number of rooms (`rm`) influence the median value of homes (`medv`)?
+
+#### Creating a Scatter Plot in Plotly
+
+Step-by-step Explanation:
+
+Initialize the Plot: We start by calling plot_ly(), where we specify the dataset and the axes.
+
+```{r echo = T, message = FALSE, warning = FALSE}
+plot_ly(data = housing, x = ~rm, y = ~medv)
+```
+
+- `data = housing` tells Plotly to use the Boston Housing dataset;
+- `x = ~rm` sets the x-axis to represent the number of rooms;
+- `y = ~medv` sets the y-axis to represent the median home value.
+
+This is similar to `ggplot2::aes()` mapping, right?
+
+Now we want to specify the Plot Type: define the plot type and mode.
+
+This is what we will do:
+
+```
+type = 'scatter', mode = 'markers'
+```
+
+- `type = 'scatter'` creates a scatter plot;
+- `mode = 'markers'` uses points to represent data points.
+
+
+Next, customize Markers: adjust the appearance of the markers.
+
+```
+marker = list(size = 10, color = 'rgba(255, 182, 193, .9)')
+```
+
+- `size = 10` makes each marker size consistent;
+- `color = 'rgba(255, 182, 193, .9)` sets a light pink color with some transparenc;
+
+Add text labels: include text labels that appear when hovering over each marker.
+
+```
+text = ~paste("MEDV:", medv, "Rooms:", rm)
+```
+
+- `text = ` configures the hover text to show both the median value and number of rooms.
+
+Finally, we configure the Layout: finalize the plot with titles and axis labels.
+
+```
+layout(title = "Scatter Plot of Median Home Value vs. Number of Rooms",
+       xaxis = list(title = "Number of Rooms"),
+       yaxis = list(title = "Median Home Value ($1000s)"))
+```
+
+- `title` sets the main title of the plot;
+- `xaxis` and `yaxis` define the titles for the x-axis and y-axis, respectively.
+
+**Here is the complete code for our Plotly interactive scatter plot:**
+
+```{r echo = T, message = FALSE, warning = FALSE}
+plot_ly(data = housing, 
+        x = ~rm, 
+        y = ~medv, 
+        type = 'scatter', 
+        mode = 'markers',
+        marker = list(size = 10, color = 'rgba(255, 182, 193, .9)'), 
+        text = ~paste("MEDV:", medv, "Rooms:", rm)) %>%
+  layout(title = "Scatter Plot of Median Home Value vs. Number of Rooms",
+         xaxis = list(title = "Number of Rooms"),
+         yaxis = list(title = "Median Home Value ($1000s)"))
+```
+
+**Analysis.** This scatter plot helps us visually assess the relationship between the number of rooms and home values. Generally, we might observe a positive trend where more rooms indicate a higher median home value, suggesting that larger homes in Boston are more expensive.
+
+### 3. Distribution of Property Tax Rates
+
+**EDA Question.** What is the variability and distribution of property tax rates (tax) across different properties?
+
+#### Creating a Histogram in Plotly
+
+First the complete code, and then a step-by-step explanation:
+
+```{r echo = T, message = FALSE, warning = FALSE}
+plot_ly(housing, 
+        x = ~tax, 
+        type = "histogram",
+        marker = list(color = 'rgba(100, 250, 100, 0.7)')) %>%
+  layout(title = "Histogram of Property Tax Rates",
+         xaxis = list(title = "Property Tax Rate"),
+         yaxis = list(title = "Count"))
+```
+
+
+Initialize the plot: 
+
+```
+plot_ly(boston_housing, x = ~tax)
+```
+
+- `x = ~tax` sets the x-axis to represent the property tax rates.
+
+Specify the plot type: define that you want to create a histogram.
+
+```
+type = "histogram"
+```
+
+- `type = "histogram"` tells Plotly to generate a histogram.
+
+Customize appearance: customize the color and style of the histogram bars.
+
+
+```
+marker = list(color = 'rgba(100, 250, 100, 0.7)')
+```
+
+- `color = 'rgba(100, 250, 100, 0.7)'` sets a semi-transparent green color.
+
+Configure the Layout: Add titles and axis labels to make the plot informative.
+
+```
+layout(title = "Histogram of Property Tax Rates",
+       xaxis = list(title = "Property Tax Rate"),
+       yaxis = list(title = "Frequency"))
+```
+
+- `title` provides a main title.
+- `xaxis` and `yaxis` define the labels for the x-axis and y-axis.
+
+**Analysis.** The histogram reveals the distribution of property tax rates among properties in Boston. It helps identify the most common tax rates and detect any outliers or unusual spikes in the data.
+
+### 4. Crime Rate, Age, and Median Value
+
+**EDA Question.** How does the crime `crim` rate correlate with `age`, and how are these factors related to whether the property tract bounds Charles River or not (see: `chas` variable)?
+
+#### Creating a Bubble Chart in Plotly
+
+Here is the complete code:
+
+```{r echo = T, message = FALSE, warning = FALSE}
+plot_ly(data = housing, 
+        x = ~age, 
+        y = ~crim, 
+        type = 'scatter', 
+        mode = 'markers',
+        marker = list(size = ~medv/3,
+                      color = ~chas),
+        text = ~paste("Crime Rate:", crim, 
+                      "<br>Age:", age, 
+                      "<br>Median Value:", medv,
+                      "<br>Charles River:", chas)) %>%
+  layout(title = "Bubble Chart of Crime Rate vs. Age",
+         xaxis = list(title = "Age"),
+         yaxis = list(title = "Crime Rate"))
+
+```
+
+Log-scales for both `crim` and `age` might be of some help here:
+
+```{r echo = T, message = FALSE, warning = FALSE}
+plot_ly(data = housing, 
+        x = ~log(age), 
+        y = ~log(crim), 
+        type = 'scatter', 
+        mode = 'markers',
+        marker = list(size = ~medv/3,
+                      color = ~chas),
+        text = ~paste("Crime Rate:", crim, 
+                      "<br>Age:", age, 
+                      "<br>Median Value:", medv,
+                      "<br>Charles River:", chas)) %>%
+  layout(title = "Bubble Chart of Crime Rate vs. Age",
+         xaxis = list(title = "log(Age)"),
+         yaxis = list(title = "log(Crime Rate)"))
+```
+
+**Analysis.** The highest crime rates are indeed found in the areas where oldest properties are situated which seem to be the cheapest at the same time. There is no apparent evidence whether bounding the Charles River banks make any difference
+
+### 5. Difference between `type` and `mode` and their usage in `plot_ly()`
+
+In Plotly, particularly when using the `plot_ly()` function in R, the `type` and `mode` parameters serve distinct roles in defining how data is visualized:
+
+#### `type` parameter
+
+- **Definition**: The `type` parameter in `plot_ly()` specifies the type of plot or chart that you want to create. This determines the overall visual representation of the data.
+
+- **Common Types**: These include `scatter`, `bar`, `box`, `histogram`, `heatmap`, `surface`, `scatter3d`, `mesh3d`, and others. 
+
+- **Usage Example**: If you want to create a line plot, you would set `type = 'scatter'` and then specify `mode = 'lines'` (explained below under `mode`). For a simple bar chart, you would use `type = 'bar'`.
+
+### `mode` parameter
+
+- **Definition**: The `mode` parameter is used primarily with scatter plots (including line charts and bubble charts) to define how the data points are connected or represented visually within the given `type`.
+
+- **Common Modes**: For `type = 'scatter'`, common `mode` values include:
+  - `markers`: Displays data points as individual markers (dots).
+  - `lines`: Connects data points with lines.
+  - `text`: Displays data points as text labels.
+  - `lines+markers`: Uses both lines and markers to represent data points.
+  - `lines+markers+text`: Combines lines, markers, and text to display the data.
+- **Usage Example**: To create a plot that shows both the data points and the lines connecting them, you would use `plot_ly(type = 'scatter', mode = 'lines+markers')`.
+
+**Example in R**
+
+Here’s a simple example demonstrating the use of `type` and `mode` in `plot_ly()`:
+
+```{r echo = T, message = FALSE, warning = FALSE}
+# Sample data
+data <- data.frame(
+  x = 1:100,
+  y = runif(100)
+)
+
+# Line plot
+plot_ly(data, 
+        x = ~x, 
+        y = ~y, 
+        type = 'scatter', 
+        mode = 'lines') %>%
+  layout(title = 'Line Plot')
+```
+
+
+```{r echo = T, message = FALSE, warning = FALSE}
+# Scatter plot with markers
+plot_ly(data, 
+        x = ~x, 
+        y = ~y, 
+        type = 'scatter', 
+        mode = 'markers') %>%
+  layout(title = 'Scatter Plot with Markers')
+```
+
+```{r echo = T, message = FALSE, warning = FALSE}
+# Scatter plot with markers and lines
+plot_ly(data, 
+        x = ~x, 
+        y = ~y, 
+        type = 'scatter', 
+        mode = 'markers+lines') %>%
+  layout(title = 'Scatter Plot with Markers and Lines')
+```
+
+For a simple bar plot we can use `type='bar'` with `mode='lines'`:
+
+```{r echo = T, message = FALSE, warning = FALSE}
+# Scatter plot with bars
+plot_ly(data, 
+        x = ~x, 
+        y = ~y, 
+        type = 'bar', 
+        mode = 'lines') %>%
+  layout(title = 'Simple Bat Plot')
+```
+
+### 6. A practical introduction to A/B testing
+
+#### 6.1 Testing the difference between two means: **t-test**
+
+The **t-test** is a statistical test that is used to determine whether there is a significant difference between the means of two groups. It is commonly used when you want to compare the average performance, measurements, or outcomes between two groups under different conditions or treatments. The t-test provides a way to check if the differences observed in the data are likely to be genuinely reflecting a difference in the population, or if they could just be due to random variation.
+
+There are several types of t-tests, but the most common are:
+
+- **Independent samples t-test.** This is used when comparing two different groups of subjects (e.g., people receiving two different types of treatment).
+- **Paired sample t-test.** This is used when comparing two values from the same group at different times (e.g., before and after treatment for the same group of patients).
+
+For our analysis, we'll focus on the independent samples t-test as we are comparing two different subsets of data:
+
+- **Q.** Is there a statistically significant difference in the median values of homes between areas with crime rates above the median compared to those with crime rates at or below the median in the Boston housing market?
+
+Let's move through the steps of our analysis:
+
+- Calculate the median of the `crim` (crime rate) variable.
+- Split the data set based on whether `crim` is greater than or less than or equal to its median.
+- Conduct an independent t-test on the `medv` (median value of owner-occupied homes) between the two groups.
+- Report and interpret the results.
+
+First, we will load the data, calculate the necessary statistics, and perform the t-test.
+
+Find the median of `crim`:
+
+```{r echo=TRUE}
+# Calculate the median of the 'crim' variable
+median_crim <- median(housing$crim)
+print(median_crim)
+```
+
+Use `dplyr` to create two new data sets that we need:
+
+```{r echo=TRUE}
+# Subset the data into two groups
+low_crim <- housing %>% 
+  dplyr::filter(crim <= median_crim) %>% 
+  dplyr::select(crim, medv)
+
+high_crim <- housing %>% 
+  dplyr::filter(crim > median_crim) %>% 
+  dplyr::select(crim, medv)
+
+head(low_crim)
+head(high_crim)
+```
+
+Perform t-test in R using `t.test()`:
+
+```{r echo=TRUE}
+# Perform an independent t-test on 'medv'
+t_test_results <- t.test(x = low_crim$medv, 
+                         y = high_crim$medv,
+                         # var.equal = TRUE
+                         )
+
+# Print the results
+print(t_test_results)
+```
+
+This code will output the results of the t-test, which includes the t-statistic, degrees of freedom, p-value, and confidence interval of the difference in means. 
+
+**Interpretation:**
+
+- `T-statistic`: This value indicates the calculated difference in means between the two groups (low crime rate and high crime rate areas) relative to the spread or variability of their scores. A higher t-statistic indicates a greater difference between groups.
+
+- `P-value`: The p-value is extremely small, far less than 0.05, which is a common threshold for statistical significance in social sciences. This suggests that the differences in median home values between areas with crime rates higher than the median and those with crime rates lower or equal to the median are statistically significant.
+
+**Conclusion:**
+
+Based on the t-test, we can conclude that there is a statistically significant difference in the median values of homes between areas with relatively higher crime rates compared to those with lower crime rates. This implies that, on average, areas with lower crime rates tend to have higher median home values. This result is quite intuitive as safer neighborhoods are generally more desirable and can drive higher property values. To illustrate:
+
+```{r echo=TRUE}
+housing %>% 
+  dplyr::select(crim, medv) %>% 
+  dplyr::mutate(med_crim = crim > median(crim)) %>% 
+  dplyr::select(med_crim, medv) %>% 
+  dplyr::group_by(med_crim) %>% 
+  dplyr::summarise(mean_medv = mean(medv), median_medv = median(medv))
+```
+
+### Videos
+
+- Watch [Descriptive Statistics, David Caughlin](https://www.youtube.com/watch?v=WCC4IXavits)
+- Watch [Variance - Clearly Explained, Steven Bradburn](https://www.youtube.com/watch?v=x0rmUXWtSS8)
+- Watch [How To Calculate The Standard Deviation, Steven Bradburn](https://www.youtube.com/watch?v=x0rmUXWtSS8)
+
+### R Markdown
+
+[R Markdown](https://rmarkdown.rstudio.com/) is what I have used to produce this beautiful Notebook. We will learn more about it near the end of the course, but if you already feel ready to dive deep, here's a book: [R Markdown: The Definitive Guide, Yihui Xie, J. J. Allaire, Garrett Grolemunds.](https://bookdown.org/yihui/rmarkdown/) 
+
+
+***
+Goran S. Milovanović
+
+DataKolektiv, 2024.
+
+contact: goran.milovanovic@datakolektiv.com
+
+![](_img/DK_Logo_100.png)
+
+***
+License: [GPLv3](http://www.gnu.org/licenses/gpl-3.0.txt)
+This Notebook is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This Notebook is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this Notebook. If not, see <http://www.gnu.org/licenses/>.
+
+***
+
