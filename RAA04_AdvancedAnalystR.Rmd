@@ -85,6 +85,7 @@ Understanding the `Boston Housing` data:
 # Generate summary statistics for the dataset
 summary(housing)
 ```
+
 ### 2. Relationship Between Number of Rooms and Home Value
 
 **EDA Question:** How does the number of rooms (`rm`) influence the median value of homes (`medv`)?
@@ -120,7 +121,7 @@ type = 'scatter', mode = 'markers'
 Next, customize Markers: adjust the appearance of the markers.
 
 ```
-marker = list(size = 10, color = 'rgba(255, 182, 193, .9)')
+marker = list(size = 10, color = 'rgba(35, 107, 195, 0.64)')
 ```
 
 - `size = 10` makes each marker size consistent;
@@ -274,7 +275,7 @@ In Plotly, particularly when using the `plot_ly()` function in R, the `type` and
 
 - **Definition**: The `type` parameter in `plot_ly()` specifies the type of plot or chart that you want to create. This determines the overall visual representation of the data.
 
-- **Common Types**: These include `scatter`, `bar`, `box`, `histogram`, `heatmap`, `surface`, `scatter3d`, `mesh3d`, and others. 
+- **Common Types**: These include `scatter`, `bar`, `box`, `histogram`, `heatmap`, `surface`, `scatter3d`, `mesh3d`, and others.
 
 - **Usage Example**: If you want to create a line plot, you would set `type = 'scatter'` and then specify `mode = 'lines'` (explained below under `mode`). For a simple bar chart, you would use `type = 'bar'`.
 
@@ -298,7 +299,7 @@ Here’s a simple example demonstrating the use of `type` and `mode` in `plot_ly
 # Sample data
 data <- data.frame(
   x = 1:100,
-  y = runif(100)
+  y = sort(runif(100, -50, 50))
 )
 
 # Line plot
@@ -422,7 +423,8 @@ housing %>%
   dplyr::mutate(med_crim = crim > median(crim)) %>% 
   dplyr::select(med_crim, medv) %>% 
   dplyr::group_by(med_crim) %>% 
-  dplyr::summarise(mean_medv = mean(medv), median_medv = median(medv))
+  dplyr::summarise(mean_medv = mean(medv), 
+                   median_medv = median(medv))
 ```
 
 ### Videos

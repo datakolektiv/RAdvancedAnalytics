@@ -84,6 +84,7 @@ Understanding the `Boston Housing` data:
 # Generate summary statistics for the dataset
 summary(housing)
 ```
+
 **Our task today will be to build a statistical learning model that predicts `medv` from a set of suitable predictors from the Boston Housing Data data set.**
 
 ### 2. Variance, Covariance, and Correlation
@@ -150,9 +151,9 @@ To create a grouped boxplot of both `Sepal.Length` and `Petal.Length` from the `
 # Reshape the data from wide to long format
 iris_long <- iris |>
   dplyr::select(Sepal.Length, Petal.Length) |>
-  pivot_longer(cols = c(Sepal.Length, Petal.Length),
-               names_to = "Feature",
-               values_to = "Length")
+  tidyr::pivot_longer(cols = c(Sepal.Length, Petal.Length),
+                      names_to = "Feature",
+                      values_to = "Length")
 iris_long
 ```
 
@@ -171,6 +172,7 @@ ggplot(iris_long, aes(x = Feature,
   theme(axis.ticks.x = element_blank()) + 
   theme(axis.text.x = element_blank())
 ```
+
 ```{r echo = T}
 ggplot(iris_long, aes(x = Length, 
                       color = Feature,
@@ -211,7 +213,7 @@ One could think there is something going on here. But:
 ```{r echo = T, message = F}
 ggplot(data = iris, aes(x = Sepal.Length,
                         y = Petal.Length,
-                        color = Species)
+                        color = Species) 
        ) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F, linewidth = .25) +
@@ -257,7 +259,7 @@ Thus,
 
 ``` {r echo = T}
 zSepalLength <- (iris$Sepal.Length - mean(iris$Sepal.Length))/sd(iris$Sepal.Length)
-zPetalLength <- (iris$Petal.Length-mean(iris$Petal.Length))/sd(iris$Petal.Length)
+zPetalLength <- (iris$Petal.Length - mean(iris$Petal.Length))/sd(iris$Petal.Length)
 cov(zSepalLength, zPetalLength)
 ```
 
@@ -284,6 +286,7 @@ There's a nice `scale()` function that will quicken-up the computation of *z-sco
 zSepalLength1 <-  scale(iris$Sepal.Length, center = T, scale = T)
 sum(zSepalLength1 == zSepalLength) == length(zSepalLength)
 ```
+
 The {base} `cor()` function produces correlation matrices too:
 
 ``` {r echo = T}
@@ -630,7 +633,7 @@ The following example is a modification of the [multiple-linear-regression secti
 
 ```{r echo = T}
 data(stackloss)
-str(stackloss)
+glimpse(stackloss)
 ```
 
 The description of the `stackloss` dataset is found in the [documentation](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/stackloss.html):
@@ -741,6 +744,7 @@ model <- lm(medv ~ ., data = model_data)
 # Display the summary of the model
 summary(model)
 ```
+
 ##### Statistical Report on Multiple Linear Regression Analysis: Boston Housing Dataset
 
 ###### Model Overview
