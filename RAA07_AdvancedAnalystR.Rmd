@@ -1,0 +1,597 @@
+---
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session07"
+author:
+- name: Goran S. Milovanović, PhD
+  affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
+abstract: null
+output:
+  html_notebook:
+    code_folding: show
+    theme: spacelab
+    toc: true
+    toc_float: true
+    toc_depth: 5
+  html_document:
+    toc: true
+    toc_depth: 5
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+---
+
+![](_img/DK_Logo_100.png)
+
+***
+# Module 4: Collecting data from APIs and PDFs, automated production in MS Office from R, and OpenAI ChatGPT from R
+
+## Week 07: R data ecosystem: packages for accessing various data sources. Understanding JSON and XML for API calls. Parse PDF files.
+
+ 
+### What do we want to do today?
+
+In this session, we delve into the practicalities of importing and processing data from various sources using R, a crucial skill for any data analyst. Our exploration starts with making simple API calls to fetch data, providing a foundation for understanding the structure and format of JSON and XML data. We will then advance to more complex API interactions and data processing techniques, equipping you with the skills to handle real-world data extraction tasks efficiently. Additionally, we'll cover methods for extracting data from PDF files, an essential capability for dealing with unstructured data. The session ends with a comprehensive case study utilizing World Bank data, where we'll apply our learned techniques to analyze and report on global economic indicators.
+
+**Feedback** should be send to `goran.milovanovic@datakolektiv.com`. 
+These notebooks accompany the ADVANCED ANALYST - Foundations for Advanced Data Analytics in R [DataKolektiv](http://www.datakolektiv.com/app_direct/DataKolektivServer/) training.
+
+***
+
+### Welcome to R!
+
+![](_img/AdvAnalyticsR2024_Banner.jpeg)
+
+### 1. Understanding, making, and parsing API calls
+
+Until now, we have used only data stored as `.csv` or `.xlsx` files. As we have seen it was possible to map such files 1:1 onto dataframes in R: columns were defined, with the first rows holding column names by convention... However, in Data Science, many times we face the situation in which we have to obtain some data from a source that does not necessarily deliver *"tabular"* data structures. Also, many times we will be facing data structures that are essentially not "tabular": for example, data structures in which some elements contain certain fields which other elements do not - and not because there are missing data, but because sometimes it does not make sense for something to be described by a certain attribute at all. Imagine describing [David Bowie](https://www.wikidata.org/wiki/Q5383), a famous English musician, by a data structure: we can know his date of birth, and the release dates of his albums perhaps, but should be place all that data into one single column? No, because the semantics of such a field would be weird, of course. How would we organize the rows in a dataframe describing David Bowie: the first row describes the person, while other rows describe his works of art? So, we have a column for `dateOfBirth`, and that column has a value in the first row of the dataframe only, and then we have a column for `releaseDate`, and that column holds `NA` in the first row and then a timestamp in all other rows that refer to his albums? Wait, what about his spouse, children, collaborators: assign a row in a dataframe to each one?
+
+No. Of course, a **list** in R would do, correct?
+
+In the following example we will access a free REST API from within our R environment, collect the API response as [JSON](https://www.json.org/json-en.html), convert it to an R list, and play with the data.
+
+#### Setup the basic API access parameters
+
+In this example we will rely on the free [https://datausa.io/](https://datausa.io/) API to obtain statistical data. Here is the intro to their API: [datausa.io API](https://datausa.io/about/api/).
+
+- You will find the API base endpoint there:
+
+```{r echo = T}
+baseEndPoint <- "https://datausa.io/api/data"
+```
+
+#### Make a simple API call
+
+We will use [{httr}](https://cran.r-project.org/web/packages/httr/vignettes/quickstart.html) to get in touch with the API. It is a part of [{tidyverse}](https://www.tidyverse.org/).
+
+```{r echo = T}
+library(httr)
+```
+
+**Step 1. Define API parameters.**
+
+First we define the API parameters.
+
+```{r echo = T}
+### --- compose API call
+# - use base API endpoint
+# - and concatenate with API parameters
+# - from the following example: https://datausa.io/about/api/
+# - parameter: drilldowns
+drilldowns <- paste0("drilldowns=", "Nation")
+# - parameter: measures
+measures <- paste0("measures=", "Population")
+# - parameters:
+params <- paste("&", c(drilldowns, measures),
+                sep = "", collapse = "")
+cat(params)
+```
+
+**Step 2. Compose API call.**
+
+We put together the `baseEndPoint` with the API call parameters:
+
+```{r echo = T}
+api_call <- paste0(baseEndPoint, "?", params)
+cat(api_call)
+```
+
+**Step 3. Make API call.**
+
+We use `httr::GET()` to contact the API, ask for data, and fetch the result:
+
+```{r echo = T}
+response <- httr::GET(URLencode(api_call))
+class(response)
+```
+
+The `URLencode(api_call)` call to the base R `URLencode()` function will take care of [Percent-encoding](https://en.wikipedia.org/wiki/Percent-encoding) where and if necessary. Hint: always use `URLencode(your_api_call)`.
+
+We can see that `response` is now of a `response` class. It is pretty structured and rich indeed:
+
+```{r echo = T}
+str(response)
+```
+
+You need to check one thing: the server status response.
+
+```{r echo = T}
+response$status_code
+```
+
+`200` means that your request was processed successfully. Introduce yourself to server status responses and learn a bit about them from the following source: [HTTP response status codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status).
+
+The results is found in `response$content`, but...
+
+```{r echo = T}
+class(response$content)
+```
+
+```{r echo = T}
+print(response$content[1:50])
+```
+
+What is `raw`? It means that your data were obtained as *raw binary data* and they need to be decoded into an R `character` class representation. It is easy:
+
+```{r echo = T}
+resp <- rawToChar(response$content)
+class(resp)
+```
+
+Is `resp` lengthy?
+
+```{r echo = T}
+nchar(resp)
+```
+
+```{r echo = T}
+cat(resp)
+```
+
+Now we can see that the API response is **JSON** indeed. To work with JSON in R, we need to convert it into some R known data structures. For example a list.
+
+### 2. JSON
+
+#### Understanding JSON
+
+**JSON (JavaScript Object Notation)** is a lightweight data interchange format that is easy for humans to read and write, and easy for machines to parse and generate. It is widely used for data transmission between a server and a web application, as well as for storing and exchanging data in various contexts, including APIs.
+
+#### Key Characteristics of JSON:
+
+- **Human-readable**: JSON is formatted in a way that is easy to understand for humans, making it ideal for data documentation and debugging.
+
+- **Lightweight**: It is a text format that is concise and easy to parse.
+
+- **Language-independent**: While derived from JavaScript, JSON is language-agnostic and can be used with most programming languages, including R.
+
+#### JSON Structure:
+
+JSON data is organized in two primary structures:
+
+1. **Objects**: An unordered set of key/value pairs. Each key is a string, and the value can be a string, number, object, array, true, false, or null. Objects are enclosed in curly braces `{}`.
+   - Example:
+     ```json
+     {
+       "name": "Alice",
+       "age": 30,
+       "isStudent": false
+     }
+     ```
+
+2. **Arrays**: An ordered list of values. Values can be of any type (string, number, object, array, true, false, or null). Arrays are enclosed in square brackets `[]`.
+   - Example:
+     ```json
+     [
+       "apple",
+       "banana",
+       "cherry"
+     ]
+     ```
+
+#### Using JSON in R
+
+In R, you can use the `jsonlite` package to work with JSON data. The package provides functions to read JSON data from a file or URL and convert it into R data frames or lists, and vice versa.
+
+- **Reading JSON Data**:
+
+```{r echo = T}
+print(response)
+```
+
+```{r echo = T}
+print(resp)
+```
+
+```{r echo = T}
+library(jsonlite)
+data <- jsonlite::fromJSON(resp)
+```
+
+`data` is now a **list**:
+
+```{r echo = T}
+data$source
+```
+
+```{r echo = T}
+data$data
+```
+
+- **Writing JSON Data**:
+
+```{r echo = T}
+json_data <- toJSON(data)
+print(json_data)
+# write(json_data, file = "data.json")
+```
+
+Understanding JSON is essential for advanced analytics, as it enables seamless integration with web APIs and efficient data handling in your R projects.
+
+Let's plot the time series of the US population over years then:
+
+```{r echo = T}
+library(ggplot2)
+library(ggrepel)
+ggplot(data = data$data, 
+       aes(x = Year,
+           y = Population, 
+           label = Population)) + 
+  geom_path(size = .25, color = "blue", group = 1) + 
+  geom_point(size = 2, color = "blue") + 
+  geom_label_repel(size = 3) + 
+  ggtitle("US Population") +
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(plot.title = element_text(hjust = .5))
+```
+
+#### Make another API call and inspect the data
+
+For each API that you want to use you will need to read its documentation and learn about the parameters that you may pass to it. 
+
+I have stripped this API call from [https://datausa.io/profile/soc/education-legal-community-service-arts-media-occupations](https://datausa.io/profile/soc/education-legal-community-service-arts-media-occupations).
+
+You can copy and paste [the entire API call](https://datausa.io/api/data?measure=Average%20Wage,Average%20Wage%20Appx MOE,Record Count&drilldowns=Minor Occupation Group&Workforce Status=true&Record Count>=5) into your browsers navigation bar to obtain the JSON response directly.
+
+The data are on education, legal, community service, arts, & media occupations in the USA.
+
+Make a call and check the server response status:
+
+```{r echo = T}
+api_call <- paste0(baseEndPoint, 
+                   "?", 
+                   paste("PUMS Occupation=210000-270000", 
+                         "measure=Total Population,Total Population MOE Appx,Record Count",
+                         "drilldowns=Wage Bin",
+                         "Workforce Status=true",
+                         "Record Count>=5", 
+                         sep = "&"))
+response <- GET(URLencode(api_call))
+response$status
+```
+
+Convert the response to JSON and than to list and a data.frame:
+
+```{r echo = T}
+response <- rawToChar(response$content)
+response <- fromJSON(response)
+data <- response$data
+head(data)
+```
+
+Visualize with {ggplot2}:
+
+```{r echo = T, fig.height=50}
+data$`Wage Bin` <- factor(data$`Wage Bin`, 
+                          levels = unique(data$`Wage Bin`))
+ggplot(data = data, 
+       aes(x = Year,
+           y = log(`Total Population`), 
+           color = `Wage Bin`,
+           fill = `Wage Bin`)) + 
+  geom_path(size = 1.5, group = 1) + 
+  geom_point(size = 13) + 
+  facet_wrap(~`Wage Bin`, ncol = 2) +
+  ggtitle("US: Education, legal, community service, arts, & media occupations") +
+  theme_bw() + 
+  theme(panel.border = element_blank()) + 
+  theme(plot.title = element_text(hjust = .5, size = 70)) + 
+  theme(axis.text.x = element_text(angle = 90, size = 40)) +
+  theme(axis.title.x = element_text(size = 50)) + 
+  theme(axis.text.y = element_text(size = 40)) +
+  theme(axis.title.y = element_text(size = 50)) + 
+  theme(legend.text = element_text(size = 50)) +
+  theme(legend.title = element_text(size = 50)) +
+  theme(strip.text = element_text(size = 45)) +
+  theme(strip.background = element_blank()) +
+  theme(legend.position = "top")
+```
+
+
+### 3. Complicated API responses and XML
+
+[Wikidata](https://www.wikidata.org/wiki/Wikidata:Main_Page) is a free, collaborative, multilingual knowledge base that stores structured data to support Wikipedia and other Wikimedia Foundation projects. It serves as a central repository for data, enabling easy access and reuse of information across various platforms and applications.
+
+Key Features:
+
+- Centralized Data: Provides a single source of truth for structured data, ensuring consistency across multiple Wikimedia projects.
+- Collaborative: Anyone can contribute, edit, and update entries, similar to Wikipedia.
+- Multilingual: Supports data entries in multiple languages, making it accessible to a global audience.
+- Linked Data: Integrates with other databases and knowledge graphs, enhancing data connectivity and utility.
+
+In the following examples we will be using the [Wikibase API](https://www.mediawiki.org/wiki/Wikibase/API) to obtain data from [Wikidata](https://www.wikidata.org/wiki/Wikidata:Main_Page), the World's largest open knowledge base that comprises all structured information from Wikipedia and many other sources. 
+
+```{r echo = T, message = F, warning = F}
+library(XML) # - parse XML format
+```
+
+#### David Bowie in Wikidata
+
+We will contact the Wikibase API to obtain all data stored in Wikidata on David Bowie (who has a **Q identifier** of Q5383 in this knowledge base). We will ask the Wikibase API to use JSON to describe its response. Here is how the JSON response will look like: [Wikibase API response](https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5383&languages=en).
+
+```{r echo = T}
+query <- 
+  'https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5383&languages=en&format=json'
+response <- GET(URLencode(query))
+response <- rawToChar(response$content)
+response <- fromJSON(response)
+class(response)
+```
+
+Now, Wikidata is **very complex** (and thus very powerful as a descriptive system; after all, it's goal is to be able to describe *just anything* that we can imagine, talk, and write about), so what `fromJSON()` returns is a nasty, nasty, nested list:
+
+```{r echo = T}
+instaceOf_DavidBowie <- response$entities$Q5383$claims$P31
+instaceOf_DavidBowie$mainsnak$datavalue$value
+```
+
+It is necessary to study the [Wikidata DataModel](https://www.mediawiki.org/wiki/Wikibase/DataModel) carefully in order to be able to navigate the knowledge structures that it describes:
+
+```{r echo = T}
+labelOf_DavidBowie <- response$entities$Q5383$labels$en$value
+labelOf_DavidBowie
+```
+
+However, once you do learn about Wikidata's data model... Tens of millions of highly structured items and relations among them will become accessible to you. Order emerges from chaos in this case, I assure you. Besides JSON, there is XML (and many more, but we will focus on these two formats). 
+
+#### An XML response from a REST API
+
+### Understanding XML
+
+**XML (eXtensible Markup Language)** is a versatile text-based format used for representing structured data. It is designed to be both human-readable and machine-readable, making it a popular choice for data interchange between systems.
+
+#### Key Characteristics of XML:
+
+- **Self-descriptive**: XML uses tags to define data elements, providing context and structure.
+- **Hierarchical**: Data is organized in a tree-like structure, allowing for complex nested relationships.
+- **Flexible**: You can define your own tags, making XML highly adaptable to different data needs.
+- **Cross-platform**: XML can be used and parsed on any operating system or programming language.
+
+#### XML Structure:
+
+XML documents consist of elements enclosed in tags, with a root element that contains all other elements.
+
+- **Example of a Simple XML Document**:
+  ```xml
+  <person>
+    <name>John Doe</name>
+    <age>30</age>
+    <email>john.doe@example.com</email>
+  </person>
+  ```
+
+- **Example with Nested Elements**:
+  ```xml
+  <bookstore>
+    <book>
+      <title>Effective R Programming</title>
+      <author>Jane Smith</author>
+      <price>29.99</price>
+    </book>
+    <book>
+      <title>Data Science with R</title>
+      <author>John Doe</author>
+      <price>39.99</price>
+    </book>
+  </bookstore>
+  ```
+
+Let's get back to the Wikibase API and ask for the same data on David Bowie wrapped in an [XML response](https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5383&languages=en&format=xml):
+
+```{r echo = T}
+query <- 
+  'https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5383&languages=en&format=xml'
+response <- GET(URLencode(query))
+response <- rawToChar(response$content)
+response <- xmlParse(response)
+response <- xmlToList(response)
+```
+
+**Note:** `format=xml`.
+
+The English label for David Bowie in Wikidata:
+
+```{r echo = T}
+response$entities$entity$labels$label
+```
+
+```{r echo = T}
+class(response$entities$entity$labels$label)
+```
+
+#### 4.4 All names of David Bowie
+
+Now, David Bowie, in all languages available in Wikidata. First, we get the data.
+
+```{r echo = T}
+query <- 
+  'https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q5383&format=json'
+response <- GET(URLencode(query))
+response <- rawToChar(response$content)
+response <- fromJSON(response)
+```
+
+Second: study the structure of the response, and then `lapply()` across the appropriate set of lists: 
+
+```{r echo = T}
+labels <- lapply(response$entities$Q5383$labels, function(x) {
+  paste0(x$value, " (", x$language, ")")
+})
+labels <- paste(labels, collapse = ", ")
+print(labels)
+```
+
+Didn't I tell you how lists and functional programming are important in R?
+
+### 4. Parse PDF files from R
+
+Sooner or later you will want to extract tabular data from PDF files...
+
+```{r echo = T}
+# Load the tabulizer library
+# Download Download the Microsoft Build of OpenJDK
+# https://learn.microsoft.com/en-us/java/openjdk/download
+# Find your JAVA_HOME (to be exemplified in the session) and then:
+# Sys.setenv(JAVA_HOME="C:/Program Files/Microsoft/jdk-11.0.23.9-hotspot")
+library(tabulapdf)
+
+# Define the path to the PDF file
+data_dir <- paste0(getwd(), "/_data/")
+pdf_path <- paste0(data_dir, "mtcars.pdf")
+
+# Extract all tables from the PDF
+tables <- tabulapdf::extract_tables(pdf_path)
+```
+
+Returned a list `tables`:
+
+```{r echo = T}
+tables
+```
+
+Extract to `data.frame`, one by one:
+
+```{r echo = T}
+mtcars <- tables[[1]]
+iris <- tables[[2]]
+bio_data <- tables[[3]]
+```
+
+### 5. Case Study: World Bank Data
+
+- Learn about the WDI package - World Bank data in R - install it, and learn how to use it: [WDI](https://github.com/vincentarelbundock/WDI)
+- Here's some code to get you started: 
+
+```{r echo = T}
+# install.packages("WDI)
+library(WDI)
+WDIsearch('gdp')
+```
+
+```{r echo = T}
+data_set = WDI(indicator='NY.GDP.MKTP.CD', 
+               country=c('US'), 
+               start=1960, end=2022)
+print(data_set)
+```
+
+You will need to learn about [The World Bank Data](https://data.worldbank.org/indicator) in order to understand the indicators! 
+
+```{r echo = T}
+data_set = WDI(indicator='NY.GDP.MKTP.CD', 
+               country=c('RS', 'HR', 'SI', 'ME', 'BA', 'MK'), 
+               start=1990, 
+               end=2023)
+print(data_set)
+```
+
+```{r echo = T}
+ggplot(data_set, 
+       aes(x = year, 
+           y = NY.GDP.MKTP.CD, 
+           color = country)) + 
+  geom_line() +
+  xlab('Year') + ylab('GDP per capita') + 
+  theme_bw() + 
+  theme(panel.border = element_blank())
+```
+
+**Your task is to provide an EDA based on World Bank Data on the how ex-Yu countries developed after 1990.** Use ggplot2 and Plotly for visualizations. Study any World Bank Data indicators that you might find interesting for the comparative study at hand, obtained them via the `WDI` package, cross-tabulate against each other if necessary or interesting, and provide your insights in R Markdown.
+
+
+### 6. R Data Ecosystem
+
+First, have a look at this treasure: [A list of over 1,000 datasets available in R packages](https://vincentarelbundock.github.io/Rdatasets/datasets.html)...
+
+Now, here is a list of some R packages specifically designed to connect to third-party open-data resources and provide `data.frames`:
+
+1. **WDI**: Accesses World Bank data.
+   - GitHub: [WDI](https://github.com/vincentarelbundock/WDI)
+   
+2. **tidycensus**: Accesses US Census Bureau data, including the American Community Survey.
+   - GitHub: [tidycensus](https://github.com/walkerke/tidycensus)
+   
+3. **rnaturalearth**: Downloads country boundaries and other natural earth map data.
+   - GitHub: [rnaturalearth](https://github.com/ropensci/rnaturalearth)
+   
+4. **Eurostat**: Accesses data from the Eurostat database.
+   - GitHub: [eurostat](https://github.com/rOpenGov/eurostat)
+   
+5. **quandl**: Accesses financial, economic, and alternative datasets from Quandl.
+   - GitHub: [quandl](https://github.com/quandl/quandl-r)
+   
+6. **faoapi**: Accesses data from the FAO (Food and Agriculture Organization) database.
+   - GitHub: [faoapi](https://github.com/SWS-Methodology/faoswsTrade)
+   
+8. **rnoaa**: Accesses data from the National Oceanic and Atmospheric Administration (NOAA).
+   - GitHub: [rnoaa](https://github.com/ropensci/rnoaa)
+   
+9. **tuber**: Accesses YouTube API for video and channel data.
+   - GitHub: [tuber](https://github.com/gojiplus/tuber)
+   
+10. **imfr**: Accesses data from the International Monetary Fund (IMF) database.
+    - GitHub: [imfr](https://github.com/christophergandrud/imfr)
+    
+11. **rdhs**: Accesses Demographic and Health Surveys (DHS) Program data.
+    - GitHub: [rdhs](https://github.com/ropensci/rdhs)
+    
+12. **blscrapeR**: Accesses data from the Bureau of Labor Statistics (BLS).
+    - GitHub: [blscrapeR](https://github.com/keberwein/blscrapeR)
+    
+13. **rWBclimate**: Accesses World Bank Climate Data API.
+    - GitHub: [rWBclimate](https://github.com/ropensci/rWBclimate)
+
+### Further Readings
+
+- [An Introduction to JSON, from Digital Ocean](https://www.digitalocean.com/community/tutorials/an-introduction-to-json)
+- [Introduction to XML, from IBM, by Doug Tidwell](https://www.ibm.com/developerworks/xml/tutorials/xmlintro/xmlintro.html)
+- [How to Access Any RESTful API Using the R Language, by Andrew Carpenter](https://www.programmableweb.com/news/how-to-access-any-restful-api-using-r-language/how-to/2017/07/21)
+
+### Important sources, documentation, etc.
+
+- [XML Tutorial, W3C](https://www.w3schools.com/xml/)
+- [JSON defined](https://www.json.org/json-en.html)
+- [JS JSON from w3schools](https://www.w3schools.com/js/js_json_intro.asp)
+
+
+### R Markdown
+
+[R Markdown](https://rmarkdown.rstudio.com/) is what I have used to produce this beautiful Notebook. We will learn more about it near the end of the course, but if you already feel ready to dive deep, here's a book: [R Markdown: The Definitive Guide, Yihui Xie, J. J. Allaire, Garrett Grolemunds.](https://bookdown.org/yihui/rmarkdown/) 
+
+
+
+***
+Goran S. Milovanović
+
+DataKolektiv, 2024.
+
+contact: goran.milovanovic@datakolektiv.com
+
+![](_img/DK_Logo_100.png)
+
+***
+License: [GPLv3](http://www.gnu.org/licenses/gpl-3.0.txt)
+This Notebook is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This Notebook is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this Notebook. If not, see <http://www.gnu.org/licenses/>.
+
+***
+
