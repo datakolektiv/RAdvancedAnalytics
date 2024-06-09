@@ -1,0 +1,511 @@
+---
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session09"
+author:
+- name: Goran S. Milovanović, PhD
+  affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
+abstract: null
+output:
+  html_notebook:
+    code_folding: show
+    theme: spacelab
+    toc: true
+    toc_float: true
+    toc_depth: 5
+  html_document:
+    toc: true
+    toc_depth: 5
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+---
+
+![](_img/DK_Logo_100.png)
+
+***
+# Module 5: Classification (supervised and unsupervised)
+
+## Week 09: Solving Classification Problems w. Binomial Logistic and Multinomial Regression
+
+### What do we want to do today?
+
+### Solving Classification Problems with Binomial Logistic and Multinomial Regression
+
+In this session, we explore the world of classification problems, focusing on two pivotal techniques: Binomial Logistic Regression and Multinomial Regression. These methods are essential tools in predictive analytics for categorical data, enabling us to model the relationship between a set of predictors and a categorical outcome. We will start by understanding the fundamentals of classification problems and the scenarios where binomial and multinomial logistic regression are applicable.
+
+Using R and the `nnet` package, we will learn to build, evaluate, and interpret both types of regression models. This session aims not only to equip you with the skills to fit these models but also to provide you with the knowledge to derive meaningful insights and make informed decisions based on your analyses. By the end of this session, you will be adept at applying logistic regression techniques to solve real-world classification problems.
+
+**Feedback** should be send to `goran.milovanovic@datakolektiv.com`. 
+These notebooks accompany the ADVANCED ANALYST - Foundations for Advanced Data Analytics in R [DataKolektiv](http://www.datakolektiv.com/app_direct/DataKolektivServer/) training.
+
+***
+
+### Welcome to R!
+
+![](_img/AdvAnalyticsR2024_Banner.jpeg)
+
+Setup:
+
+```{r echo = T}
+# Packages
+library(tidyverse)
+library(nnet)
+
+# Directory Tree
+data_dir <- paste0(getwd(), "/_data/")
+```
+
+
+## 1. Binomial Logistic Regression
+
+We will use the [Marketing Campaign Response Prediction](https://www.kaggle.com/datasets/sujithmandala/marketing-campaign-positive-response-prediction) from Kaggle in this session. The `campaign_responses.csv` should be found in your `_data` directory.
+
+Load the data:
+
+```{r echo = T}
+data_set <- read_csv(paste0(data_dir, "HR_DataSet.csv"))
+head(data_set)
+```
+### HR Dataset
+
+This dataset contains information about employees in a company, including various attributes related to their performance, tenure, and satisfaction. It is designed to help analyze factors that influence employee retention and other HR metrics.
+
+#### Column Descriptions:
+
+1. **satisfaction_level**: The level of satisfaction of the employee (numerical, ranging from 0 to 1).
+2. **last_evaluation**: The most recent evaluation score of the employee (numerical, ranging from 0 to 1).
+3. **number_project**: The number of projects the employee has worked on (integer).
+4. **average_montly_hours**: The average monthly hours worked by the employee (integer).
+5. **time_spend_company**: The number of years the employee has spent in the company (integer).
+6. **Work_accident**: Indicates whether the employee has had a work accident (binary, 0 or 1).
+7. **left**: Indicates whether the employee has left the company (binary, 0 or 1).
+8. **promotion_last_5years**: Indicates whether the employee was promoted in the last 5 years (binary, 0 or 1).
+9. **Department**: The department in which the employee works (categorical).
+10. **salary**: The salary level of the employee (categorical, e.g., low, medium, high).
+
+This dataset is useful for performing various types of HR analytics, such as understanding factors contributing to employee turnover, analyzing satisfaction and performance, and identifying patterns in promotions and work accidents.
+
+### 1.1 The `glm()` function
+
+The `glm()` function in R is used to fit generalized linear models, which extend linear models to allow for response variables that have error distribution models other than a normal distribution. The `glm()` function is highly versatile and can be used for various types of regression analyses, including logistic regression, Poisson regression, and others.
+
+#### Key Features:
+
+- **Flexibility:** `glm()` supports different types of distributions (families) such as binomial, Poisson, Gaussian, and more, making it suitable for a wide range of statistical modeling.
+- **Link Functions:** It allows the use of different link functions that define the relationship between the linear predictor and the mean of the distribution function.
+
+#### Syntax:
+
+```
+glm(formula, family = familytype, data = data_set)
+```
+
+- **formula:** A symbolic description of the model to be fitted. It is of the form `response ~ predictors`.
+- **family:** Specifies the error distribution and link function to be used in the model. Common families include `binomial` (for logistic regression), `poisson` (for count data), and `gaussian` (for standard linear regression).
+- **data:** The data frame containing the variables in the formula.
+
+#### Example: Binomial Logistic Regression
+
+Here is an example of using the `glm()` function in R to perform Binomial Logistic Regression on the HR dataset to predict whether an employee will leave the company based on various factors.
+
+### Example: Binomial Logistic Regression with HR Dataset
+
+**N.B.** Now is the right time to dive into [R for Data Science (2e): 16  Factors](https://r4ds.hadley.nz/factors)!
+
+```{r echo=TRUE}
+# Convert relevant columns to factors
+data_set$Work_accident <- as.factor(data_set$Work_accident)
+data_set$left <- as.factor(data_set$left)
+data_set$promotion_last_5years <- as.factor(data_set$promotion_last_5years)
+data_set$Department <- as.factor(data_set$Department)
+data_set$salary <- as.factor(data_set$salary)
+
+# Fit a Binomial Logistic Regression model
+model <- glm(left ~ .,
+             family = binomial, 
+             data = data_set)
+
+# Summarize the model
+summary(model)
+```
+
+### Explanation:
+
+1. **Convert relevant columns to factors:** 
+   - `Work_accident`, `left`, `promotion_last_5years`, `Department`, and `salary` are converted to factors to ensure that they are treated as categorical variables in the model.
+
+2. **Fit the model:** 
+   - The `glm()` function is used to fit the Binomial Logistic Regression model. 
+   - The formula `left ~ .` specifies that we are modeling `left` (whether the employee left the company) as a function of the other variables.
+   - `family = binomial` specifies that we are using the binomial family for logistic regression.
+
+3. **Summarize the model:** 
+   - The `summary(model)` function provides a detailed summary of the fitted model, including coefficients, standard errors, z-values, and p-values.
+
+#### Explanation and Interpretation of the `glm()` Output
+
+**Call:**
+
+The call section shows the function call used to fit the model. This includes the formula specifying the dependent and independent variables, the family used (binomial), and the dataset.
+
+**Coefficients**
+
+The coefficients section provides estimates of the model parameters, their standard errors, z-values, and p-values. Each row corresponds to a predictor variable in the model.
+
+- **Estimate**: The estimated effect of the predictor variable on the log-odds of the response variable. Positive values indicate an increase in the log-odds of the event occurring (e.g., employee leaving), while negative values indicate a decrease.
+- **Std. Error**: The standard error of the estimate, indicating the variability of the estimate.
+- **z value**: The test statistic for the null hypothesis that the coefficient is zero. It is calculated as the estimate divided by the standard error.
+- **Pr(>|z|)**: The p-value for the z-test, indicating the probability of observing a z value as extreme as, or more extreme than, the observed value under the null hypothesis. A small p-value suggests that the corresponding predictor variable has a statistically significant effect on the response variable.
+
+**Interpretation of Key Results**
+
+1. **(Intercept)**: The baseline log-odds of the response when all predictor variables are at their reference levels. A negative intercept (-1.4762862) indicates lower baseline odds of an employee leaving.
+
+2. **satisfaction_level**: A significant negative effect (-4.1356889, p < 2e-16). Higher satisfaction levels are associated with lower odds of leaving.
+
+3. **last_evaluation**: A significant positive effect (0.7309032, p < 2e-16). Higher last evaluation scores are associated with higher odds of leaving.
+
+4. **number_project**: A significant negative effect (-0.3150787, p < 2e-16). More projects are associated with lower odds of leaving.
+
+5. **average_montly_hours**: A significant positive effect (0.0044603, p < 2e-16). More monthly hours are associated with higher odds of leaving.
+
+6. **time_spend_company**: A significant positive effect (0.2677537, p < 2e-16). More years in the company are associated with higher odds of leaving.
+
+7. **Work_accident1**: A significant negative effect (-1.5298283, p < 2e-16). Having a work accident is associated with lower odds of leaving.
+
+8. **promotion_last_5years1**: A significant negative effect (-1.4301364, p < 2e-16). Having been promoted in the last 5 years is associated with lower odds of leaving.
+
+9. **Department (various)**:
+    - **Departmenthr**: A positive effect (0.2323779, p = 0.07678). HR employees have higher odds of leaving, but the effect is marginally significant.
+    - **DepartmentIT**: A negative effect (-0.1807179, p = 0.13894). IT employees have lower odds of leaving, but the effect is not statistically significant.
+    - **Departmentmanagement**: A significant negative effect (-0.4484236, p = 0.00502). Management employees have lower odds of leaving.
+    - **DepartmentRandD**: A significant negative effect (-0.5823659, p = 5.83e-05). R&D employees have lower odds of leaving.
+    - Other departments do not show statistically significant effects.
+
+10. **salary (various)**:
+    - **salarylow**: A significant positive effect (1.9440627, p < 2e-16). Employees with low salaries have higher odds of leaving.
+    - **salarymedium**: A significant positive effect (1.4132244, p < 2e-16). Employees with medium salaries also have higher odds of leaving compared to high salary employees.
+
+**Overall Model Fit**
+
+- **Null deviance**: 16465 (on 14998 degrees of freedom). The deviance of the null model (a model with no predictors).
+
+- **Residual deviance**: 12850 (on 14980 degrees of freedom). The deviance of the fitted model.
+
+- **AIC**: 12888. A measure of the model's fit, with lower values indicating a better fit.
+
+- **Number of Fisher Scoring iterations**: 5. The number of iterations taken to converge to the final model.
+
+**Summary**
+
+The model indicates several significant predictors of employee turnover. Employees with higher satisfaction levels and those who had a work accident or promotion in the last 5 years are less likely to leave. Conversely, employees with higher last evaluation scores, more average monthly hours, more time spent at the company, or lower salaries are more likely to leave. Departmental differences also play a role, with management and R&D employees being less likely to leave compared to other departments.
+
+### 1.3 Dummy Coding Explained
+
+Dummy coding is a method used to transform categorical variables into a series of binary (0/1) variables, making them suitable for use in regression models and other statistical analyses. This transformation is essential because most statistical models require numerical input, and dummy coding allows categorical data to be included in these models.
+
+#### How Dummy Coding Works:
+
+1. **Identify Categories**: For a given categorical variable with \( k \) categories, create \( k-1 \) dummy variables. Each dummy variable represents a specific category and indicates the presence (1) or absence (0) of that category for each observation.
+
+2. **Reference Category**: One of the categories is chosen as the reference (or baseline) category. This category is represented by a vector of zeros across all dummy variables. The reference category's effect is absorbed into the intercept of the regression model.
+
+3. **Create Dummy Variables**: For each of the remaining \( k-1 \) categories, create a dummy variable. Each dummy variable takes a value of 1 if the observation belongs to that category and 0 otherwise.
+
+#### Example:
+
+Suppose you have a categorical variable `Department` with four categories: "sales", "IT", "HR", and "management". 
+
+1. Choose "sales" as the reference category.
+2. Create three dummy variables:
+   - `DepartmentIT`: 1 if the department is IT, 0 otherwise.
+   - `DepartmentHR`: 1 if the department is HR, 0 otherwise.
+   - `Departmentmanagement`: 1 if the department is management, 0 otherwise.
+
+Here's how the dummy coding would look:
+
+```{r echo=T}
+data.frame(Department = c("sales", "IT", "HR", "management"),
+           DepartmentIT = c(0,1,0,0),
+           DepartmentHR = c(0,0,1,0),
+           Departmentmenagement = c(0,0,0,1))
+```
+
+In this setup, the reference category "sales" is indicated by all zeros.
+
+#### Using Dummy Variables in Regression:
+
+When you include these dummy variables in a regression model, the coefficients of the dummy variables represent the effect of being in that category relative to the reference category.
+
+For example, in the regression equation:
+\[ y = \beta_0 + \beta_1 \cdot \text{DepartmentIT} + \beta_2 \cdot \text{DepartmentHR} + \beta_3 \cdot \text{Departmentmanagement} + \epsilon \]
+
+- \(\beta_0\) is the intercept, representing the mean value of \( y \) for the reference category ("sales").
+- \(\beta_1\) is the change in the mean value of \( y \) for being in the IT department compared to the sales department.
+- \(\beta_2\) is the change in the mean value of \( y \) for being in the HR department compared to the sales department.
+- \(\beta_3\) is the change in the mean value of \( y \) for being in the management department compared to the sales department.
+
+### 1.4 Coefficients in Binomial Logistic Regression
+
+You definitely want to do this following a Binomial Logistic Regression:
+
+```{r echo = T}
+exp(model$coefficients)
+```
+
+#### Explanation: Why We Need to Take the Exponential of the Coefficients
+
+In the context of Binomial Logistic Regression, the coefficients obtained from the model represent the log-odds of the dependent variable (e.g., the probability of an event occurring, such as an employee leaving the company) given the predictor variables. To interpret these coefficients in a more meaningful way, we need to convert the log-odds back to odds by taking the exponential of the coefficients. Here’s why this is important:
+
+#### Understanding Log-Odds and Odds:
+
+- **Log-Odds**: The coefficients in a logistic regression model are expressed in terms of log-odds. Log-odds are the natural logarithm of the odds of the event occurring. This logarithmic scale can make it difficult to interpret the effects of predictor variables directly.
+  
+  \[
+  \text{Log-Odds} = \log\left(\frac{P}{1-P}\right)
+  \]
+
+- **Odds**: Odds represent the ratio of the probability of the event occurring to the probability of the event not occurring. By exponentiating the log-odds, we obtain the odds.
+
+  \[
+  \text{Odds} = \exp(\text{Log-Odds})
+  \]
+
+#### Converting Log-Odds to Odds:
+
+When we take the exponential of a logistic regression coefficient, we transform it from the log-odds scale to the odds scale, making it easier to understand the effect of each predictor variable.
+
+- **Exponentiated Coefficient (\(e^{\beta}\))**: This value tells us the multiplicative change in the odds for a one-unit increase in the predictor variable. For example, if \( \exp(\beta) = 1.5 \), it means that a one-unit increase in the predictor variable increases the odds of the event occurring by 50%.
+
+#### Practical Interpretation:
+
+Let's interpret a few exponentiated coefficients from the model results:
+
+```{r}
+exp(model$coefficients)
+```
+
+- **satisfaction_level (0.01599164)**: The exponentiated coefficient is approximately 0.016. This means that for a one-unit increase in satisfaction level, the odds of an employee leaving *decrease* by a factor of about 0.016, indicating a strong negative effect.
+
+- **last_evaluation (2.07695560)**: The exponentiated coefficient is approximately 2.08. This means that for a one-unit increase in the last evaluation score, the odds of an employee leaving increase by a factor of about 2.08, indicating a strong positive effect.
+
+- **salarylow (6.98708012)**: The exponentiated coefficient is approximately 6.99. This means that employees with low salaries have almost 7 times higher odds of leaving compared to the reference category (high salary), indicating a substantial effect.
+
+#### Why This Matters:
+
+By taking the exponential of the coefficients, we translate the effects of predictor variables into a scale that is more intuitive and easier to communicate. Instead of discussing changes in log-odds, which are abstract, we can talk about changes in odds, which have a more direct interpretation in terms of likelihoods and probabilities. This makes the results of the logistic regression more accessible and actionable for decision-making.
+
+### 1.5 Some Theory Behind Binomial Logistic Regression
+
+In this chapter, we will compare Multiple Linear Regression with Binomial Logistic Regression, explain the logistic function, and demonstrate its role in Binomial Logistic Regression.
+
+#### Comparison of Multiple Linear Regression and Binomial Logistic Regression
+
+**Multiple Linear Regression (MLR):**
+
+- **Purpose**: MLR is used to predict a continuous dependent variable based on multiple independent variables.
+- **Equation**: The relationship is modeled as a linear combination of the predictors:
+  \[
+  y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_k x_k + \epsilon
+  \]
+  where \( y \) is the dependent variable, \( \beta_0 \) is the intercept, \( \beta_i \) are the coefficients, \( x_i \) are the independent variables, and \( \epsilon \) is the error term.
+- **Assumptions**: The errors are normally distributed, homoscedasticity (constant variance), and a linear relationship between predictors and the dependent variable.
+
+**Binomial Logistic Regression (BLR):**
+
+- **Purpose**: BLR is used to predict a binary outcome (0 or 1) based on multiple independent variables.
+- **Equation**: The relationship is modeled using the logistic function, which outputs probabilities:
+  \[
+  \log\left(\frac{p}{1-p}\right) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_k x_k
+  \]
+  where \( p \) is the probability of the event occurring.
+- **Assumptions**: The log-odds of the dependent variable are linearly related to the independent variables, and the errors are binomially distributed.
+
+#### The Logistic Function
+
+The logistic function is an S-shaped curve that maps any real-valued number to the \([0, 1]\) interval, making it suitable for modeling probabilities. The function is defined as:
+
+\[
+\text{Logistic Function} = \frac{1}{1 + e^{-z}}
+\]
+
+where \( z \) is the linear combination of the predictors (i.e., \( \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_k x_k \)).
+
+The logistic function transforms the linear regression output (which can range from \(-\infty\) to \(\infty\)) to a probability range of 0 to 1.
+
+#### Plotting the Logistic Function in R
+
+Let's create an R function to plot the logistic function using `ggplot2`.
+
+```{r echo=T}
+# Define the logistic function
+logistic_function <- function(z) {
+  return(1 / (1 + exp(-z)))
+}
+
+# Create a sequence of values from -10 to 10
+z_values <- seq(-10, 10, by = 0.1)
+
+# Calculate the logistic function for each value of z
+logistic_values <- logistic_function(z_values)
+
+# Create a data frame for plotting
+logistic_df <- data.frame(z = z_values, probability = logistic_values)
+
+# Plot the logistic function using ggplot2
+ggplot(logistic_df, aes(x = z, y = probability)) +
+  geom_line(color = "blue", size = 1) +
+  labs(title = "Logistic Function",
+       x = "z",
+       y = "Probability") +
+  theme_minimal()
+```
+
+#### How the Logistic Function is Used in Binomial Logistic Regression
+
+In Binomial Logistic Regression, the logistic function is used to convert the linear predictor (i.e., the weighted sum of the independent variables) into a probability. This transformation ensures that the predicted values are within the \([0, 1]\) range, suitable for modeling binary outcomes.
+
+When we fit a logistic regression model, the coefficients represent the change in the log-odds of the outcome for a one-unit change in the predictor variables. By exponentiating these coefficients, we convert the log-odds to odds, providing a more intuitive interpretation of the effect of each predictor.
+
+And how accurate is the model?
+
+```{r echo = T}
+features <- dplyr::select(data_set, -left)
+predictions <- predict(model, 
+                       newdata = features,
+                       type = "response")
+data_set$predictions <- predictions
+head(data_set)
+```
+
+Ok, we need to from probability to class:
+
+```{r echo = T}
+data_set$predictions <- as.numeric(data_set$predictions >= .5)
+head(data_set)
+```
+
+```{r echo = T}
+acc <- sum(data_set$predictions == data_set$left)/dim(data_set)[1]
+print(paste0("Classification Accuracy: ", round(acc, 2)*100, "%"))
+```
+
+## 2. Multinomial Regression
+
+The data set is [Advanced IoT Agriculture 2024](https://www.kaggle.com/datasets/wisam1985/advanced-iot-agriculture-2024) from Kaggle.
+
+```{r echo=T}
+data_set <- read_csv(paste0(data_dir, "Advanced_IoT_Dataset.csv"))
+data_set$Random <- NULL
+head(data_set)
+```
+
+```{r echo=T}
+unique(data_set$Class)
+```
+
+
+### 2.1 Introduction to Multinomial Regression
+
+While Binomial Logistic Regression deals with binary outcomes, Multinomial Regression extends this concept to handle scenarios where the outcome variable has more than two categories. 
+
+#### Equation:
+
+The model generalizes the logistic regression model as follows:
+
+\[
+\log\left(\frac{P(Y=j)}{P(Y=k)}\right) = \beta_{0j} + \beta_{1j}X_1 + \beta_{2j}X_2 + \ldots + \beta_{pj}X_p
+\]
+
+where \( P(Y=j) \) is the probability of the outcome being category \( j \), \( k \) is the baseline category, and \( X_1, X_2, \ldots, X_p \) are the predictor variables.
+
+In R, using the `nnet` package:
+
+```{r echo=T}
+model <- nnet::multinom(Class ~ .,
+                        data = data_set)
+summary(model)
+```
+By exponentiating the coefficients, as in Binomial Logistic Regression, we can interpret the effect of each predictor on the odds of being in one category relative to the baseline category.
+
+```{r echo = T}
+coef(model)
+```
+
+```{r echo = T}
+exp(coef(model))
+```
+
+To obtain z-tests for coefficients:
+
+```{r echo = T}
+# Extract coefficients and standard errors
+summary_model <- summary(model)
+coefficients <- summary_model$coefficients
+std_errors <- summary_model$standard.errors
+
+# Calculate z-values and p-values
+z_values <- coefficients / std_errors
+print("### -------------------------------------------------")
+print("### z-tests")
+print(z_values)
+print("### -------------------------------------------------")
+print("### p-values")
+p_values <- 2 * (1 - pnorm(abs(z_values)))
+print(p_values)
+print("### -------------------------------------------------")
+```
+
+Accuracy?
+
+```{r echo=TRUE}
+predictions <- predict(model,
+                       newdata = dplyr::select(data_set, -Class))
+head(predictions)
+```
+
+```{r echo=TRUE}
+acc <- sum(data_set$Class == predictions)/dim(data_set)[1]
+print(paste0("Classification Accuracy: ", round(acc, 2)*100, "%"))
+```
+
+## 3. Case Study: Churn Problem w. Binomial Logistic Regression
+
+A classic: [Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)! Play around with the data, clean it, perform EDA with the most important visualizations, and use binomial logistic regression to solve this churn problem. 
+
+
+### Further Readings
+
++ [Andy Field, Jeremy Miles & Zoë Field, Discovering Statistics Using R, SAGE Publishing, Chapter 8. Logistic Regression](https://uk.sagepub.com/en-gb/eur/discovering-statistics-using-r/book236067)
+
++ [Peter Oliver Caya: Implementing Binary Logistic Regression in R](https://medium.com/pete-caya/implementing-binary-logistic-regression-in-r-e3a6f59ae294)
+
++ [Jeff Webb, Chapter 8 Logistic Regression from Course Notes for IS 6489, Statistics and Predictive Analytics](https://bookdown.org/jefftemplewebb/IS-6489/logistic-regression.html)
+
++ [STHDA, Logistic Regression Assumptions and Diagnostics in R](http://www.sthda.com/english/articles/36-classification-methods-essentials/148-logistic-regression-assumptions-and-diagnostics-in-r/)
+
++ [Ben Horvath, Deriving Logistic Regression](https://rpubs.com/benhorvath/logistic_regression)
+
+
+### R Markdown
+
+[R Markdown](https://rmarkdown.rstudio.com/) is what I have used to produce this beautiful Notebook. We will learn more about it near the end of the course, but if you already feel ready to dive deep, here's a book: [R Markdown: The Definitive Guide, Yihui Xie, J. J. Allaire, Garrett Grolemunds.](https://bookdown.org/yihui/rmarkdown/) 
+
+
+
+***
+Goran S. Milovanović
+
+DataKolektiv, 2024.
+
+contact: goran.milovanovic@datakolektiv.com
+
+![](_img/DK_Logo_100.png)
+
+***
+License: [GPLv3](http://www.gnu.org/licenses/gpl-3.0.txt)
+This Notebook is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This Notebook is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this Notebook. If not, see <http://www.gnu.org/licenses/>.
+
+***
+
