@@ -536,6 +536,61 @@ ggplot() +
 ```
 Notice how the precision of the model's prediction is getting lower and lower as we advance more towards future data points!  
 
+
+### Case Study: `AirPassengers` data set
+
+```{r echo = T}
+data("AirPassengers")
+head(AirPassengers)
+```
+
+```{r echo = T}
+ts_model <- auto.arima(AirPassengers)
+summary(ts_model)
+```
+
+```{r echo = T}
+forecasted_values <- forecast(ts_model, h = 32)
+print(forecasted_values)
+```
+
+```{r echo = T}
+# Convert the forecasted values into a data frame
+forecast_df <- data.frame(
+  Date = seq(as.Date("1961-01-01"), 
+             by = "month", 
+             length.out = 32),
+  Forecast = forecasted_values$mean,
+  Lo80 = forecasted_values$lower[,1],
+  Hi80 = forecasted_values$upper[,1],
+  Lo95 = forecasted_values$lower[,2],
+  Hi95 = forecasted_values$upper[,2]
+)
+
+# Convert the time_series object into a data frame
+time_series_df <- data.frame(
+  Date = seq(as.Date("1961-01-01"), by = "month", length.out = length(AirPassengers)),
+  Value = as.numeric(time_series)
+)
+
+# Combine historical data and forecasted data
+combined_df <- rbind(
+  time_series_df,
+  data.frame(Date = forecast_df$Date, Value = NA)
+)
+
+# Plot the historical data and forecasted values
+ggplot() +
+  geom_line(data = time_series_df, aes(x = Date, y = Value), color = "blue") +
+  geom_line(data = forecast_df, aes(x = Date, y = Forecast), color = "red") +
+  geom_ribbon(data = forecast_df, aes(x = Date, ymin = Lo80, ymax = Hi80), alpha = 0.2, fill = "orange") +
+  geom_ribbon(data = forecast_df, aes(x = Date, ymin = Lo95, ymax = Hi95), alpha = 0.1, fill = "green") +
+  labs(title = "AirPassengers Forecast with Prediction Intervals",
+       x = "Date",
+       y = "Value") +
+  theme_minimal()
+```
+
 ### Books and Tutorials
 
 - [Forecasting: Principles and Practice (2nd ed), Rob J Hyndman and George Athanasopoulos, Monash University, Australia](https://otexts.com/fpp2/) - This is an **absolute must-read** for anyone seriously interested in time-series analysis!

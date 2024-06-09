@@ -50,3 +50,7 @@ rsconnect/
 
 # renv
 renv/
+
+# secrets
+openai_api_key.txt
+

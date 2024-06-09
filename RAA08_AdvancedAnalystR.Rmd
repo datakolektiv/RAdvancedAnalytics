@@ -1,0 +1,583 @@
+---
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session08"
+author:
+- name: Goran S. Milovanović, PhD
+  affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
+abstract: null
+output:
+  html_notebook:
+    code_folding: show
+    theme: spacelab
+    toc: true
+    toc_float: true
+    toc_depth: 5
+  html_document:
+    toc: true
+    toc_depth: 5
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+---
+
+![](_img/DK_Logo_100.png)
+
+***
+# Module 4: Collecting data from APIs and PDFs, automated production in MS Office from R, and OpenAI ChatGPT from R
+
+## Week 08: Interacting with MS Office from R environments. Interacting with OpenAI ChatGPT from R. Case study: Text Sentiment Analysis w. R and ChatGPT.
+
+### What do we want to do today?
+
+In this lecture, we explore the seamless integration of R with various Microsoft Office applications. We begin with methods for interacting with MS Word from R. Moving forward, we will cover the automation of PowerPoint production from R, allowing for the creation of dynamic, data-driven presentations. Additionally, we delve into enabling data manipulation and automation with MS Excel from R. We also introduce the OpenAI API, demonstrating how to automate interactions with ChatGPT from R to leverage advanced AI capabilities. The session ends with Case Study 4: Sentiment Analysis Report, where you will apply these skills to perform and document a comprehensive sentiment analysis.
+
+**Feedback** should be send to `goran.milovanovic@datakolektiv.com`. 
+These notebooks accompany the ADVANCED ANALYST - Foundations for Advanced Data Analytics in R [DataKolektiv](http://www.datakolektiv.com/app_direct/DataKolektivServer/) training.
+
+***
+
+### Welcome to R!
+
+![](_img/AdvAnalyticsR2024_Banner.jpeg)
+
+Setup:
+
+```{r echo = T}
+# Packages
+library(tidyverse)
+library(officer)
+library(openai)
+library(readxl)
+library(openxlsx)
+library(jsonlite)
+
+# Directory Tree
+data_dir <- paste0(getwd(), "/_data/")
+analytics_dir <- paste0(getwd(), "/_analytics/")
+image_dir <- paste0(getwd(), "/_img/")
+```
+
+
+### 1. Reporting in MS Word from R
+
+Load some data:
+
+```{r echo = T}
+data("mtcars")
+head(mtcars)
+```
+
+
+`officer` package can be use to generate MS Word files from R:
+
+```{r echo = T}
+document <- officer::read_docx() |>
+  officer::body_add_par("mtcars data set", style = "heading 1") |>
+  officer::body_add_par("", style = "Normal") |>
+  officer::body_add_table(mtcars, style = "table_template")
+
+print(document, 
+      target = paste0(analytics_dir, "officer_example01.docx"))
+```
+
+What is `document`?
+
+```{r echo = T}
+document <- read_docx("_analytics/officer_example01.docx")
+document
+```
+
+```{r echo = T}
+str(document)
+```
+
+Add more data:
+
+```{r echo = T}
+data(iris)
+head(iris)
+```
+
+```{r echo = T}
+document <- document |>
+  body_add_par("iris data set", style = "heading 1") |>
+  body_add_par("", style = "Normal") |>
+  body_add_table(iris, style = "table_template")
+print(document,
+      target = "_analytics/officer_example01.docx")
+```
+
+Add an image:
+
+```{r echo = T}
+image_path <- paste0(image_dir, "Rlogo.png")
+document <- document |>
+  body_add_img(src = image_path, 
+               height = 1.06, 
+               width = 1.39, 
+               style = "centered")
+print(document, 
+      target = paste0(analytics_dir, "officer_example01.docx"))
+```
+
+Add a `ggplot2` chart:
+
+```{r echo = T}
+chart <- ggplot(data = iris,
+                aes(x = Sepal.Length,
+                    y = Petal.Length,
+                    fill = Species, 
+                    color = Species)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme_minimal()
+print(chart)
+```
+
+And now add `chart` to `document` and `print()`:
+
+```{r echo = T}
+chart <- ggplot(data = iris,
+                aes(x = Sepal.Length,
+                    y = Petal.Length,
+                    fill = Species)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  theme_minimal()
+
+document <- document|>
+  body_add_par("", style = "Normal") |>
+  body_add_gg(value = chart, style = "centered")
+
+print(document, 
+      target = paste0(analytics_dir, "officer_example01.docx"))
+```
+
+### 2. Interacting with MS PowerPoint from R
+
+The basics of presentation creation:
+
+```{r echo = T}
+# init
+slides <- officer::read_pptx() 
+
+# content
+slides <- add_slide(slides, 
+                    layout = "Title and Content", 
+                    master = "Office Theme") |>
+  ph_with(value = chart,
+          location = ph_location_type(type = "body"))
+
+# save
+print(slides, 
+      paste0(analytics_dir, "officer_example02.pptx"))
+```
+
+
+We can now play with R and PowerPoint generation from `officer` programmatically:
+
+```{r echo = T}
+# chart01
+chart01 <- ggplot(data = iris,
+                  aes(x = Sepal.Length,
+                      y = Petal.Length,
+                      fill = Species)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_minimal()
+
+# chart02
+chart02 <- ggplot(data = iris,
+                  aes(x = Sepal.Length,
+                      y = Sepal.Width,
+                      fill = Species)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_minimal()
+
+# chart03
+chart03 <- ggplot(data = iris,
+                  aes(x = Petal.Length,
+                      y = Petal.Width,
+                      fill = Species)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_minimal()
+
+# list of charts
+charts <- list(chart01,
+               chart02,
+               chart03)
+
+# init presentation
+iter_slides <- read_pptx()
+
+# add slides
+for(i in 1:3) {
+  iter_slides <- add_slide(iter_slides, 
+                           layout = "Title and Content")
+  iter_slides <- ph_with(iter_slides, 
+                         value = paste("Slide", i), 
+                         location = ph_location_type(type = "title"))
+  iter_slides <- ph_with(iter_slides, 
+                         value = charts[[i]], 
+                         location = ph_location_type(type = "body"))
+  
+}
+
+# save
+print(iter_slides,
+      paste0(analytics_dir, "officer_example03.pptx"))
+```
+
+### 3. Interacting with MS Excel from R
+
+We have already learned a bit on how to handle MS Excel files from R using `readxl`...
+
+```{r echo = T}
+# Path to the Excel file
+file_path <- paste0(data_dir, "listings.xlsx")
+
+# the data
+listings <- read_excel(file_path)
+head(listings)
+```
+
+Now we need to learn a bit about the `openxlsx` package. For example, produce an Excel file with three sheets: `iris`, `mtcars`, and `AirPassengers`:
+
+```{r echo = T}
+data(iris)
+data(mtcars)
+data(AirPassengers)
+
+# Create a new workbook
+wb <- openxlsx::createWorkbook()
+
+# Add a sheet and write the first data frame
+openxlsx::addWorksheet(wb, "iris")
+writeData(wb, sheet = "iris", iris)
+
+# Add another sheet and write the second data frame
+openxlsx::addWorksheet(wb, "mtcars")
+openxlsx::writeData(wb, sheet = "mtcars", mtcars)
+
+# Add another sheet and write the third data frame
+openxlsx::addWorksheet(wb, "AirPassengers")
+openxlsx::writeData(wb, sheet = "AirPassengers", AirPassengers)
+
+openxlsx::saveWorkbook(wb,
+                       paste0(analytics_dir, "openxlsx_example01.xlsx"))
+```
+
+`openxlsx` can also be used to place `ggplot2` generated charts into MS Excel files as images:
+
+```{r echo = T}
+# Save the plot as an image file
+ggsave(paste0(image_dir, "chart01.png"), 
+       plot = charts[[1]], 
+       width = 5, 
+       height = 4, 
+       units = "in", 
+       dpi = 300)
+
+# Create a new workbook
+wb <- openxlsx::createWorkbook()
+
+# Add a sheet
+openxlsx::addWorksheet(wb, "Sheet1")
+
+# Insert the image into the sheet
+openxlsx::insertImage(wb,
+                      sheet = "Sheet1",
+                      file = paste0(image_dir, "chart01.png"),
+                      width = 5,
+                      height = 4,
+                      startRow = 1,
+                      startCol = 1)
+
+# Save the workbook to an Excel file
+openxlsx::saveWorkbook(wb, 
+                       paste0(analytics_dir, "openxlsx_example02.xlsx"))
+```
+
+
+### 4. Interacting with OpenAI ChatGPT from R
+
+**[N.B.]** See [https://irudnyts.github.io/openai/#authentication](https://irudnyts.github.io/openai/#authentication) to understand how to add your OpenAI API key.
+
+```
+Sys.setenv(
+    OPENAI_API_KEY = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+)
+```
+
+First, let's produce a multiple linear regression model for the iris data set. I will go for: `Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width + Species`, i.e. predicting `Sepal.Length` from all other predictors.
+
+```{r echo = T}
+lin_model <- lm(Sepal.Length ~ .,
+                data = iris)
+summary(lin_model)
+```
+
+```{r echo = T}
+results <- capture.output(summary(lin_model))
+print(results)
+```
+
+```{r echo = T}
+results <- paste(results, sep = " ", collapse = "")
+print(results)
+```
+
+```{r echo = T}
+results <- gsub("\\s+", " ", results)
+print(results)
+```
+
+Reading my OpenAI API key (**N.B.** for demonstration purposes only; do not this in the following way, it is not safe; rather, set `OPENAI_API_KEY` as an environmental variable).
+
+```{r echo = T}
+openai_api_key <- readLines("openai_api_key.txt")
+```
+
+Now, Prompt Engineering:
+
+```{r echo = T}
+prompt_instruction <- "You will be provided by 
+the results of a linear regression model obtained from the lm() function.
+The results from lm() will be provided in the ### RESULTS section.
+Produce an in-depth interpretation of the results in the ### RESULTS section.
+Provide an interperation in a tutorial style."
+
+prompt_content <- paste0("### RESULTS ", results)
+
+prompt <- paste0(prompt_instruction, prompt_content)
+
+response <- create_chat_completion(
+  openai_api_key = openai_api_key,
+  model = "gpt-4o-2024-05-13",
+    messages = list(
+        list(
+            "role" = "system",
+            "content" = "You are an expert statistics tutor and R programmer."
+        ),
+        list(
+            "role" = "user",
+            "content" = prompt
+        )
+    )
+)
+
+cat(response$choices$message.content)
+```
+
+
+```{r echo = T}
+prompt_instruction <- "
+
+### BACKGROUND
+
+You will be provided by  the results of a linear regression model obtained from the lm() function. The results from lm() will be provided in the ### RESULTS section, while the data 
+set used in this analysis will be provided in the ### DATA SET  section. I will explain 
+exactly what task do you need to perform in the ### INSTRUCTION section. I will explain 
+how your response will be formatted in the ### RESPONSE FORMAT section.
+
+### DATA SET 
+
+The data set used in this analysis is iris which has the following columns:
+
+- Sepal.Length (real number)
+- Sepal.Width (real number)
+- Petal.Length (real number)
+- Petal.Width (real number)
+- Species (categorical, three levels: setosa, versicolor, virginica)
+
+### INSTRUCTION Produce R code using the ggplot2 package to visualize all important 
+aspects in the results. You will produce several plots. You will choose what plots are 
+important for someone to fully understand the results and produce the plots.  The data argument in the ggplot2 calls will always have the value of 'iris' and you can use all other column names as they are provided to you in  the ### DATA SET section. Always use theme_minimal(), center the plot titles, and name the plots accordingly. Visualize all important pair-wise variable relationships, a plot inspecting the residuals, provide a visual inspection of heteroscedasticity, and produce an influence plot; add any other plots that you might find important. If you need to derive a new variable to be used in the plot, provide the code that will calculate its value before the ggplot2 code; make sure that all ggplot2 code operates only with either existing data as described in the ### DATA SET section, or with variables that can be computed from the data. For each plot, you will prodive an explanation.
+
+
+### RESPONSE FORMAT You will respond in JSON following this schema:
+
+{
+   \"plot01\": {\"code\":\"<R CODE FOR plot01 goes here>\", \"explanation\":\"<EXPLANATION FOR plot01 goes here>\",
+   ...
+}
+
+You response must contain only JSON and nothing else but JSON.
+"
+
+prompt_content <- paste0("### RESULTS ", results)
+
+prompt <- paste0(prompt_instruction, prompt_content)
+
+response <- create_chat_completion(
+  model = "gpt-4o-2024-05-13",
+  openai_api_key = openai_api_key,
+    messages = list(
+        list(
+            "role" = "system",
+            "content" = "You are an expert statistics tutor and R programmer."
+        ),
+        list(
+            "role" = "user",
+            "content" = prompt
+        ),
+        list(
+            "role" = "assistant",
+            "content" = "{"
+        )
+    )
+)
+```
+
+Let's see...
+
+```{r echo = T}
+cat(response$choices$message.content)
+```
+
+Now, `model_response` is `response$choices$message.content` from JSON, right?
+
+```{r echo = T}
+model_response <- jsonlite::fromJSON(response$choices$message.content)
+str(model_response)
+```
+
+Enjoy:
+
+```{r echo = T}
+cat(model_response$plot01$explanation)
+```
+
+```{r echo = T}
+g <- eval(parse(text = model_response$plot02$code))
+print(g)
+```
+
+The `parse()` function in R is used to convert text (character strings) into an R expression. This can be useful when you have R code in the form of a string and you want to evaluate it as actual R code. In this example, `parse(text = model_response$plot01$code)` takes the R code stored as a character string in `model_response$plot01$code` and converts it into an R expression. This expression can then be evaluated or executed using the `eval()` function.
+
+```{r echo = T}
+cat(model_response$plot03$explanation)
+```
+
+```{r echo = T}
+g <- eval(parse(text = model_response$plot03$code))
+print(g)
+```
+
+```{r echo = T}
+cat(model_response$plot05$explanation)
+```
+
+```{r echo = T}
+g <- eval(parse(text = model_response$plot05$code))
+print(g)
+```
+
+```{r echo = T}
+cat(model_response$plot04$explanation)
+```
+
+```{r echo = T}
+g <- eval(parse(text = model_response$plot04$code))
+print(g)
+```
+
+```{r echo = T}
+cat(model_response$plot05$explanation)
+```
+
+```{r echo = T}
+g <- eval(parse(text = model_response$plot05$code))
+print(g)
+```
+
+```{r echo = T}
+cat(model_response$plot06$explanation)
+```
+
+```{r echo = T}
+g <- eval(parse(text = model_response$plot06$code))
+print(g)
+```
+
+```{r echo = T}
+cat(model_response$plot07$explanation)
+```
+
+```{r echo = T}
+g <- eval(parse(text = model_response$plot07$code))
+print(g)
+```
+
+```{r echo = T}
+cat(model_response$plot08$explanation)
+```
+
+```{r echo = T}
+g <- eval(parse(text = model_response$plot08$code))
+print(g)
+```
+
+Well, nobody is perfect:
+
+```{r echo=TRUE}
+cat(model_response$plot08$code)
+```
+
+### 6. Case Study: Sentiment Analysis Report
+
+Your task is to use R, the `officer` package, and the ChatGPT API to perform sentiment analysis on key terms found in a small set of news articles in English. In this project, you will go through all the steps from data collection, analysis using ChatGPT, formatting the response, visualizing the results, and developing a PowerPoint presentation with the results.
+
+1. From the site https://en.wikinews.org/wiki/Main_Page, copy and paste around ten articles and save each as a .txt file, e.g., text01.txt, text02.txt, etc.
+
+2. Develop R code that sends each of these articles for analysis using ChatGPT with the `openai` package and OpenAI API.
+
+3. Each article should be analyzed as follows:
+
+   3a. In the prompt for ChatGPT, ask the system to extract all Named Entities it can find; if you do not know what Named Entities are in Natural Language Processing, ask ChatGPT to explain!
+
+   3b. In the prompt for ChatGPT, ask the system to rate each identified entity on a scale of -3 ... 0 ... +3 depending on how negatively (-3, -2, -1) or positively (+1, +2, +3) the entity is discussed in the given text.
+
+   3c. Request for each text to return a JSON file with fields carrying information about each identified entity and the sentiment score related to it.
+
+4. Combine all the results and create `ggplot2` visualizations, using bar plots to represent the distribution of sentiment scores for the ten entities most frequently found in the texts you analyzed.
+
+5. Using `officer`, arrange your `ggplot2` visualizations and comments into a PowerPoint presentation that you will use to present the results!
+
+### Further Readings
+
+- [An Introduction to JSON, from Digital Ocean](https://www.digitalocean.com/community/tutorials/an-introduction-to-json)
+- [Introduction to XML, from IBM, by Doug Tidwell](https://www.ibm.com/developerworks/xml/tutorials/xmlintro/xmlintro.html)
+- [How to Access Any RESTful API Using the R Language, by Andrew Carpenter](https://www.programmableweb.com/news/how-to-access-any-restful-api-using-r-language/how-to/2017/07/21)
+
+### Important sources, documentation, etc.
+
+- [XML Tutorial, W3C](https://www.w3schools.com/xml/)
+- [JSON defined](https://www.json.org/json-en.html)
+- [JS JSON from w3schools](https://www.w3schools.com/js/js_json_intro.asp)
+
+
+### R Markdown
+
+[R Markdown](https://rmarkdown.rstudio.com/) is what I have used to produce this beautiful Notebook. We will learn more about it near the end of the course, but if you already feel ready to dive deep, here's a book: [R Markdown: The Definitive Guide, Yihui Xie, J. J. Allaire, Garrett Grolemunds.](https://bookdown.org/yihui/rmarkdown/) 
+
+
+
+***
+Goran S. Milovanović
+
+DataKolektiv, 2024.
+
+contact: goran.milovanovic@datakolektiv.com
+
+![](_img/DK_Logo_100.png)
+
+***
+License: [GPLv3](http://www.gnu.org/licenses/gpl-3.0.txt)
+This Notebook is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This Notebook is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this Notebook. If not, see <http://www.gnu.org/licenses/>.
+
+***
+

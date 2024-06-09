@@ -708,7 +708,7 @@ housing_long <- numerical_vars %>%
                       values_to = "value")
 
 # Histograms for all numerical variables
-ggplot(boston_housing_long, aes(x = value)) +
+ggplot(housing_long, aes(x = value)) +
   geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
   facet_wrap(~variable, scales = "free_x") +
   labs(title = "Histograms of Numerical Variables", 
