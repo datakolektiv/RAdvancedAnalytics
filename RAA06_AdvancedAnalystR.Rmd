@@ -39,7 +39,7 @@ These notebooks accompany the ADVANCED ANALYST - Foundations for Advanced Data A
 
 ![](_img/AdvAnalyticsR2024_Banner.jpeg)
 
-### 1. The data set at hand: `Google Trends: Data Science Trends on Google from 2004 to April 2022.` 
+## 1. The data set at hand: `Google Trends: Data Science Trends on Google from 2004 to April 2022.` 
 
 We will use the [Google Trends: Data Science Trends on Google from 2004 to April 2022. from Kaggle](https://www.kaggle.com/datasets/muhammedtausif/data-science-trends-on-google?select=March-2023-Data-Science-Trend-multiTimeline.csv) in this session.
 
@@ -143,7 +143,7 @@ ggplot(decomposed_long, aes(x = Date, y = Value)) +
   theme_minimal()
 ```
 
-### 2. Introduction to Time-Series Analysis
+## 2. Introduction to Time-Series Analysis
 
 #### What is Time-Series Analysis?
 
@@ -187,7 +187,7 @@ Consider monthly sales data of a retail store over several years:
 - Seasonality: Higher sales during holiday seasons.
 - Noise: Random fluctuations due to promotions, weather, etc.
 
-### 3. Mathematical Foundations of Time-Series Analysis ARIMA Model
+## 3. Mathematical Foundations of Time-Series Analysis ARIMA Model
 
 ### 3.1 Introduction to Stochastic Processes
 
@@ -489,7 +489,7 @@ The coefficients for these terms are provided along with their standard errors. 
 
 The training set error measures provide insights into the accuracy of the model's predictions, with lower values indicating better performance and values of ACF1 close to zero indicating that the residuals do not exhibit significant autocorrelation.
 
-### 6. Forecasting from an ARIMA model w. `forecast`
+## 6. Forecasting from an ARIMA model w. `forecast`
 
 The final data point in our time-series data on Google trends was `2022-04-01`. We can use `forecast()` to make our `ts_model` predict the values until the end of 2024 (since we're beginning in May 2022, there are thirty-two remaining months to forecast):
 
@@ -536,30 +536,141 @@ ggplot() +
 ```
 Notice how the precision of the model's prediction is getting lower and lower as we advance more towards future data points!  
 
+## 7. Case Study: Global Climate Change
 
-### Case Study: `AirPassengers` data set
+We will use the [Global Climate Change Data](https://data.world/data-society/global-climate-change-data) from Kaggle.
 
 ```{r echo = T}
-data("AirPassengers")
-head(AirPassengers)
+data_set <- read_csv(paste0(data_dir, "GlobalTemperatures.csv"))
+head(data_set)
+```
+There are some missing values in `LandAverageTemperature`:
+
+```{r echo = T}
+sum(is.na(data_set$LandAverageTemperature))
 ```
 
+You can use [`na.interp()`](https://www.rdocumentation.org/packages/forecast/versions/8.22.0/topics/na.interp) from the `forecats` package to interpolate missing data points in time series. Prepare time-series data:
+
 ```{r echo = T}
-ts_model <- auto.arima(AirPassengers)
+# Handle NA values
+time_series_data <- na.interp(data_set$LandAverageTemperature)
+
+# Create the time series object
+time_series <- ts(time_series_data, 
+                  frequency = 12, 
+                  start = c(1750, 1))
+```
+
+Decompose the time series:
+
+```{r echo = T}
+# Decompose the time series
+decomposed <- decompose(time_series)
+
+# Extract components
+trend <- decomposed$trend
+seasonal <- decomposed$seasonal
+random <- decomposed$random
+
+# Create a data frame with the decomposed components
+decomposed_df <- data.frame(
+  Date = data_set$dt,
+  Trend = trend,
+  Seasonal = seasonal,
+  Random = random
+)
+
+# Remove rows with NA values
+decomposed_df <- na.omit(decomposed_df)
+
+# Pivot the data longer for ggplot2 facet_wrap
+decomposed_long <- pivot_longer(decomposed_df, 
+                                cols = c("Trend", "Seasonal", "Random"),
+                                names_to = "Component", 
+                                values_to = "Value")
+
+# Plot the decomposed components with facet_wrap
+ggplot(decomposed_long, aes(x = Date, y = Value)) +
+  geom_line() +
+  facet_wrap(~ Component, 
+             scales = "free_y",
+             ncol = 1) +
+  labs(title = "Decomposed Components of Google Trends Data", 
+       x = "Date", 
+       y = "Value") +
+  theme_minimal()
+```
+
+ARIMA:
+
+```{r echo = T}
+ts_model <- auto.arima(time_series)
 summary(ts_model)
 ```
 
+Certainly! Here is a complete tutorial-style interpretation of the provided output from the `auto.arima()` function in R:
+
+### Interpretation of ARIMA Model Output
+
+**Series: time_series**
+- This indicates the name of the time series data being modeled.
+
+**ARIMA(5,0,1)(2,1,0)[12] with drift**
+
+- **ARIMA(p,d,q)**: This notation represents the ARIMA model structure.
+  - **p (5)**: The order of the autoregressive part (AR). This means the model includes 5 lagged values of the time series.
+  - **d (0)**: The degree of differencing. Here, it is 0, indicating that the time series is already stationary, and no differencing was needed.
+  - **q (1)**: The order of the moving average part (MA). This means the model includes 1 lagged forecast error term.
+  
+- **(P,D,Q)[m]**: This notation represents the seasonal part of the ARIMA model.
+  - **P (2)**: The order of the seasonal autoregressive part. This means the model includes 2 lagged seasonal values.
+  - **D (1)**: The degree of seasonal differencing. This indicates one seasonal differencing was applied.
+  - **Q (0)**: The order of the seasonal moving average part. This means no seasonal moving average terms were included.
+  - **m (12)**: The period of the seasonality. Here, 12 suggests monthly data with yearly seasonality.
+
+- **with drift**: Indicates that the model includes a constant term (drift).
+
+### Coefficients
+
+- **ar1, ar2, ... ar5**: These are the coefficients for the autoregressive terms.
+- **ma1**: This is the coefficient for the moving average term.
+- **sar1, sar2**: These are the coefficients for the seasonal autoregressive terms.
+- **drift**: This is the constant term in the model.
+
+**Standard Error (s.e.)**: These values provide an estimate of the variability of the coefficient estimates. Smaller values indicate more precise estimates.
+
+### Model Fit Statistics
+
+- **sigma^2 = 0.7534**: This is the estimate of the variance of the residuals (errors) in the model. Smaller values indicate a better fit.
+- **log likelihood = -4060.01**: This value is used in model comparison and selection criteria.
+- **AIC = 8140.02**: Akaike Information Criterion. A lower AIC indicates a better-fitting model.
+- **AICc = 8140.09**: Corrected Akaike Information Criterion for small sample sizes. Similar interpretation to AIC.
+- **BIC = 8200.67**: Bayesian Information Criterion. Like AIC, but penalizes more complex models more heavily. Lower values are better.
+
+### Training Set Error Measures
+
+- **ME (Mean Error)**: Average of the errors. Close to zero indicates unbiased predictions.
+- **RMSE (Root Mean Square Error)**: Measures the average magnitude of the error. Lower values indicate better fit.
+- **MAE (Mean Absolute Error)**: Average absolute error. Lower values indicate better fit.
+- **MPE (Mean Percentage Error)**: Average percentage error. 
+- **MAPE (Mean Absolute Percentage Error)**: Average absolute percentage error. Lower values indicate better fit.
+- **MASE (Mean Absolute Scaled Error)**: Scale-invariant measure of error. Lower values indicate better fit.
+- **ACF1 (Autocorrelation of residuals at lag 1)**: Close to zero indicates no significant autocorrelation in the residuals, suggesting a good fit.
+
+Now, forecast:
+
 ```{r echo = T}
-forecasted_values <- forecast(ts_model, h = 32)
+forecasted_values <- forecast(ts_model, h = 128)
 print(forecasted_values)
 ```
 
 ```{r echo = T}
 # Convert the forecasted values into a data frame
 forecast_df <- data.frame(
-  Date = seq(as.Date("1961-01-01"), 
+  Date = seq(as.Date("2016-01-01"), 
              by = "month", 
-             length.out = 32),
+             length.out = 128),
   Forecast = forecasted_values$mean,
   Lo80 = forecasted_values$lower[,1],
   Hi80 = forecasted_values$upper[,1],
@@ -568,8 +679,11 @@ forecast_df <- data.frame(
 )
 
 # Convert the time_series object into a data frame
+# Convert the time_series object into a data frame
 time_series_df <- data.frame(
-  Date = seq(as.Date("1961-01-01"), by = "month", length.out = length(AirPassengers)),
+  Date = seq(as.Date("1750-01-01"), 
+             by = "month", 
+             length.out = length(time_series)),
   Value = as.numeric(time_series)
 )
 
@@ -585,7 +699,7 @@ ggplot() +
   geom_line(data = forecast_df, aes(x = Date, y = Forecast), color = "red") +
   geom_ribbon(data = forecast_df, aes(x = Date, ymin = Lo80, ymax = Hi80), alpha = 0.2, fill = "orange") +
   geom_ribbon(data = forecast_df, aes(x = Date, ymin = Lo95, ymax = Hi95), alpha = 0.1, fill = "green") +
-  labs(title = "AirPassengers Forecast with Prediction Intervals",
+  labs(title = "LandAverageTemperature Forecast with Prediction Intervals",
        x = "Date",
        y = "Value") +
   theme_minimal()

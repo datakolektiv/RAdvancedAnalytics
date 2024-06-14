@@ -54,3 +54,6 @@ renv/
 # secrets
 openai_api_key.txt
 
+# macos
+.DS_Store
+
