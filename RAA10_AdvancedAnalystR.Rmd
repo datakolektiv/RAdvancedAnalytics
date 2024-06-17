@@ -1,0 +1,371 @@
+---
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session09"
+author:
+- name: Goran S. Milovanović, PhD
+  affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
+abstract: null
+output:
+  html_notebook:
+    code_folding: show
+    theme: spacelab
+    toc: true
+    toc_float: true
+    toc_depth: 5
+  html_document:
+    toc: true
+    toc_depth: 5
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+---
+
+![](_img/DK_Logo_100.png)
+
+***
+# Module 5: Classification (supervised and unsupervised)
+
+## Week 10: K-Means Clustering: Unsupervised Classification
+
+### What do we want to do today?
+
+### Exploring Unsupervised Classification with K-Means Clustering
+
+In this session, we delve into the realm of unsupervised learning, specifically focusing on **K-Means Clustering**. This technique is a cornerstone in the field of data analysis and machine learning, allowing us to identify and group similar observations in a dataset without predefined labels. K-Means Clustering is instrumental in exploratory data analysis, customer segmentation, and anomaly detection, among other applications.
+
+We will begin by understanding the principles of clustering and the key concepts behind the K-Means algorithm, including centroids, cluster assignment, and convergence criteria. Using R we will learn to implement K-Means Clustering, evaluate the quality of the clusters, and visualize the results. This session aims to not only teach you how to perform clustering but also how to interpret the clusters and derive actionable insights from your analysis.
+
+**Feedback** should be send to `goran.milovanovic@datakolektiv.com`. 
+These notebooks accompany the ADVANCED ANALYST - Foundations for Advanced Data Analytics in R [DataKolektiv](http://www.datakolektiv.com/app_direct/DataKolektivServer/) training.
+
+***
+
+### Welcome to R!
+
+![](_img/AdvAnalyticsR2024_Banner.jpeg)
+
+Setup:
+
+```{r echo = T}
+# Packages
+library(tidyverse)
+library(factoextra)
+
+# Directory Tree
+data_dir <- paste0(getwd(), "/_data/")
+```
+
+
+## 1. K-Means Clustering
+
+We will use the [Customer Segmentation Dataset](https://www.kaggle.com/datasets/vishakhdapat/customer-segmentation-clustering) from Kaggle in this session. The `customer_segmentation.csv` should be found in your `_data` directory.
+
+Load the data:
+
+```{r echo = T}
+data_set <- read_csv(paste0(data_dir, "customer_segmentation.csv"))
+head(data_set)
+```
+
+### The Customer Segmentation Dataset
+
+This data set contains information on customer demographics, behavior, and marketing campaign responses. It is designed to facilitate analysis and segmentation of customers based on various attributes. Below are descriptions of each variable in the data set:
+
+#### Column Descriptions:
+
+### Customer Segmentation Data Set Overview
+
+This data set is ideal for conducting customer segmentation analysis, which can help in understanding customer behavior, tailoring marketing strategies, and improving customer satisfaction and retention.
+
+1. **ID**: Unique identifier for each customer.
+2. **Year_Birth**: Year of birth of the customer.
+3. **Education**: Educational qualification of the customer.
+4. **Marital_Status**: Marital status of the customer.
+5. **Income**: Annual income of the customer (in monetary units).
+6. **Kidhome**: Number of small children in the customer's household.
+7. **Teenhome**: Number of teenagers in the customer's household.
+8. **Dt_Customer**: Date of enrollment with the company.
+9. **Recency**: Number of days since the customer's last purchase.
+10. **MntWines**: Amount spent on wine in the last 2 years.
+11. **MntFruits**: Amount spent on fruits in the last 2 years.
+12. **MntMeatProducts**: Amount spent on meat products in the last 2 years.
+13. **MntFishProducts**: Amount spent on fish products in the last 2 years.
+14. **MntSweetProducts**: Amount spent on sweet products in the last 2 years.
+15. **MntGoldProds**: Amount spent on gold products in the last 2 years.
+16. **NumDealsPurchases**: Number of purchases made with a discount.
+17. **NumWebPurchases**: Number of purchases made through the company’s website.
+18. **NumCatalogPurchases**: Number of purchases made using a catalog.
+19. **NumStorePurchases**: Number of purchases made directly in stores.
+20. **NumWebVisitsMonth**: Number of visits to the company’s website in the last month.
+21. **AcceptedCmp3**: 1 if the customer accepted the offer in the 3rd campaign, 0 otherwise.
+22. **AcceptedCmp4**: 1 if the customer accepted the offer in the 4th campaign, 0 otherwise.
+23. **AcceptedCmp5**: 1 if the customer accepted the offer in the 5th campaign, 0 otherwise.
+24. **AcceptedCmp1**: 1 if the customer accepted the offer in the 1st campaign, 0 otherwise.
+25. **AcceptedCmp2**: 1 if the customer accepted the offer in the 2nd campaign, 0 otherwise.
+26. **Complain**: 1 if the customer has complained in the last 2 years, 0 otherwise.
+27. **Z_CostContact**: Cost per contact (constant across all customers).
+28. **Z_Revenue**: Revenue per contact (constant across all customers).
+29. **Response**: 1 if the customer accepted the offer in the last campaign, 0 otherwise.
+
+We will keep only numerical features, excluding even all binary features:
+
+```{r echo = T}
+column_dtypes <- sapply(data_set, class)
+numeric_features <- which(column_dtypes == "numeric")
+numeric_features <- colnames(data_set[, numeric_features])
+numeric_features
+```
+
+Now, in line with our principle to always keep the original data set intact... 
+
+```{r echo = T}
+model_frame <- dplyr::select(data_set, all_of(numeric_features))
+head(model_frame)
+```
+
+And finally we will remove binary features from `model_frame`:
+
+```{r echo = T}
+binary_features <- sapply(model_frame, function(x) length(unique(x)))
+binary_features <- which(binary_features <= 2)
+binary_features <- colnames(model_frame[binary_features])
+binary_features
+```
+
+
+```{r echo = T}
+model_frame <- dplyr::select(model_frame, -all_of(binary_features))
+head(model_frame)
+```
+
+Let's transform `Year_Birth` to `Age`:
+
+```{r echo = T}
+model_frame$Age <- 2024 - model_frame$Year_Birth
+model_frame$Year_Birth <- NULL
+head(model_frame)
+```
+
+And finally, we do not really need the `ID` column for clustering:
+
+```{r echo = T}
+model_frame$ID <- NULL
+head(model_frame)
+```
+
+Keep only complete observations (no `NAs`):
+
+```{r echo = T}
+dim(model_frame)
+model_frame <- model_frame[complete.cases(model_frame), ]
+dim(model_frame)
+```
+
+### 1.1 The `kmeans()` function
+
+Centering (or standardizing) variables is highly recommended when performing K-Means clustering, especially if the variables are on different scales. This is because K-Means clustering uses Euclidean distance to assign points to clusters, and variables with larger scales can dominate the distance calculation, leading to biased results.
+
+```{r echo = T}
+model_frame_scaled <- as.data.frame(scale(model_frame))
+mf_means <- sapply(model_frame_scaled, mean)
+mf_sds <- sapply(model_frame_scaled, sd)
+print(mf_means)
+print(mf_sds)
+```
+
+The `kmeans()` function in R is used to perform K-Means clustering, an unsupervised learning algorithm that partitions a dataset into $k$ distinct, non-overlapping subsets (or clusters). Each cluster is defined by its centroid, which is the mean of the data points within the cluster. The goal of K-Means is to minimize the total within-cluster variance.
+
+#### Syntax:
+
+```
+kmeans(x, centers, iter.max = 10, nstart = 1, algorithm = "Hartigan-Wong", ...)
+```
+
+#### Arguments:
+
+- `x`: A numeric matrix or data frame of the data to be clustered. The rows represent the data points, and the columns represent the features.
+- `centers`: Either the number of clusters (k) or a set of initial cluster centers. If a number, this specifies how many clusters to create.
+- `iter.max`: The maximum number of iterations allowed. The default is 10.
+- `nstart`: If centers is a number, nstart specifies how many random sets of initial centers should be chosen. The best result from all nstart runs will be returned. The default is 1.
+- `algorithm`: The algorithm to be used. The default is "Hartigan-Wong", but other options include "Lloyd", "Forgy", and "MacQueen".
+- ...: Additional arguments passed to or from other methods.
+
+#### Example:
+
+```{r echo = T}
+# K-Means Clustering w. kmeans()
+cluster_solution <- kmeans(model_frame_scaled,
+                           centers = 5, 
+                           iter.max = 100,
+                           nstart = 10)
+# Centers
+cluster_solution$centers
+```
+
+Within-SS (to be explained):
+
+```{r echo=T}
+cluster_solution$tot.withinss
+```
+
+Between-SS (to be explained):
+
+```{r echo=T}
+cluster_solution$betweenss
+```
+
+Cluster membership:
+
+```{r echo=T}
+cluster_solution$cluster
+```
+
+Now we can bring the `Cluster` identifier to `model_frame` and perform some analyses:
+
+```{r echo=T}
+model_frame$Cluster <- cluster_solution$cluster
+ggplot(model_frame, 
+       aes(x = Income,
+           y = NumStorePurchases)) + 
+  geom_point(size = .5) + 
+  geom_smooth(method = "lm", size = .25, color = "red") + 
+  facet_wrap(~Cluster) + 
+  ggtitle("Age and Number of Web Purchases\nacross customer groups") +
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = .5)) + 
+  theme(panel.border = element_blank())
+```
+
+Plot cluster solution with `factoextra`:
+
+```{r echo=T}
+# Visualize the clusters
+factoextra::fviz_cluster(cluster_solution, 
+                         data = model_frame_scaled,
+                         ellipse.type = "convex",
+                         palette = "jco",
+                         labelsize = 0,
+                         ggtheme = theme_minimal())
+```
+
+### Explanation of the Cluster Visualization
+
+The visualization generated by the `fviz_cluster()` function from the `factoextra` package is a scatter plot that shows the clustering results from the K-Means algorithm. Here's a detailed explanation of the components of the plot:
+
+1. **Axes (Dim1 and Dim2)**:
+   - The plot uses two principal components (Dim1 and Dim2) that explain the highest variability in the data. 
+   - The percentage of variance explained by each dimension is indicated in parentheses on the axes labels (e.g., Dim1 explains 38.1% of the variance, and Dim2 explains 12.2% of the variance).
+
+2. **Data Points**:
+   - Each point in the plot represents a data observation (customer).
+   - Points are colored and shaped according to the cluster they belong to. For example:
+     - Blue points for Cluster 1
+     - Yellow points for Cluster 2
+     - Gray points for Cluster 3
+     - Red points for Cluster 4
+     - Light blue points for Cluster 5
+
+The [PCA](https://en.wikipedia.org/wiki/Principal_component_analysis) model used to produce this visualization will be discussed in our Session 11.
+
+## 2. Theory behind K-Means Clustering
+
+K-Means clustering aims to partition your data into \( k \) distinct groups. Here's a step-by-step breakdown of how the K-Means algorithm works:
+
+1. **Initialization**: The algorithm starts by randomly choosing \( k \) points as initial cluster centers, also called **centroids**.
+2. **Assign Clusters**: Each data point is assigned to the nearest centroid, forming \( k \) clusters.
+3. **Update Centroids**: The centroids are recalculated as the average of all points in the cluster.
+4. **Repeat**: Steps 2 and 3 are repeated until the centroids no longer change significantly or a maximum number of iterations is reached.
+
+### What are Centroids?
+
+Centroids are the "heart" or center of a cluster. Think of a centroid as the point that is closest to all other points in the cluster. It's calculated as the mean (average) position of all the points in that cluster.
+
+### Scaling the Data
+
+Before running K-Means, it's crucial to standardize or scale your data, especially if your variables are on different scales (like age and income). Scaling means adjusting the data so that each feature contributes equally to the clustering process. For instance, if one feature is measured in years and another in dollars, the one with larger numerical values could dominate the clustering process. By scaling, you bring all features to a similar scale, usually by converting them to a standard score:
+
+\[
+z = \frac{(x - \mu)}{\sigma}
+\]
+where \( x \) is the original value, \( \mu \) is the mean of the feature, and \( \sigma \) is the standard deviation.
+
+### Higher-Dimensional Space
+
+When we talk about clustering, we often visualize it in two or three dimensions. However, data points can exist in a higher-dimensional space. Each feature of your data represents a dimension. For example, if you have three features (age, income, and number of purchases), your data points exist in a three-dimensional space. If you have 10 features, your data points exist in a 10-dimensional space. The K-Means algorithm works the same way regardless of the number of dimensions; it just becomes harder to visualize as the number of dimensions increases.
+
+### The K-Means Algorithm in Detail
+
+Let's delve deeper into the steps of the K-Means algorithm with some mathematical notation.
+
+1. **Initialization**: Choose \( k \) initial centroids randomly. These centroids (\(\mathbf{\mu}_1, \mathbf{\mu}_2, \ldots, \mathbf{\mu}_k\)) can be thought of as the heart of each cluster.
+
+2. **Cluster Assignment**: Assign each data point to the nearest centroid. This is done by calculating the Euclidean distance between each data point \(\mathbf{x}_i\) and the centroids \(\mathbf{\mu}_j\). The Euclidean distance between two points \(\mathbf{a}\) and \(\mathbf{b}\) in a space is given by:
+   \[
+   \|\mathbf{a} - \mathbf{b}\| = \sqrt{\sum_{d=1}^D (a_d - b_d)^2}
+   \]
+   where \( D \) is the number of dimensions (features).
+
+3. **Update Centroids**: Once all points are assigned, update the centroids to be the mean of the points in each cluster:
+   \[
+   \mathbf{\mu}_i = \frac{1}{|C_i|} \sum_{\mathbf{x}_j \in C_i} \mathbf{x}_j
+   \]
+   This step ensures that the centroid represents the center of the cluster. Here, \( |C_i| \) is the number of points in cluster \( i \).
+
+## 3. Model Selection: how many clusters?
+
+
+## 4. Case Study: Market Segmentation
+
+We will use the [Market Segmentation in Insurance Unsupervised data set](https://www.kaggle.com/datasets/jillanisofttech/market-segmentation-in-insurance-unsupervised) from Kaggle; the `Customer Data.csv` file should already by in your `_data` directory.
+
+**Objective**:
+Your goal for this assignment is to develop a customer segmentation model to identify distinct groups of credit cardholders based on their usage behavior over the last six months. This segmentation will help in providing tailored recommendations such as saving plans, loans, and wealth management services to different customer groups.
+
+**Dataset**:
+The dataset contains information on approximately 9000 active credit cardholders, with 18 behavioral variables summarizing their usage over the last six months. Each row represents a customer, and each column represents a specific behavioral metric.
+
+**Task**:
+
+1. **Data Exploration**: Begin by exploring the dataset to understand the variables and their distributions. Identify any missing values and decide on an appropriate strategy to handle them.
+2. **Data Standardization**: Standardize the data to ensure that all variables contribute equally to the clustering process.
+3. **K-Means Clustering**: Apply the K-Means clustering algorithm to segment the customers. Experiment with different numbers of clusters to find the optimal number.
+4. **Cluster Interpretation**: Analyze the characteristics of each cluster to understand the distinct customer segments. Summarize the key features of each cluster and provide recommendations for marketing strategies tailored to each segment.
+
+**Deliverables**:
+- A brief report summarizing your findings, including:
+  - An overview of the dataset and any preprocessing steps you took.
+  - The number of clusters you selected and why.
+  - Descriptions of each cluster and the characteristics that define them.
+  
+Good luck, and happy clustering!
+
+### Further Readings/Video:
+
++ [StatQuest w. Josh Starmer: K-means clustering](https://www.youtube.com/watch?v=4b5d3muPQmA)
+
++ [Wikipedia: K-means clustering](https://en.wikipedia.org/wiki/K-means_clustering)
+
+
+
+### R Markdown
+
+[R Markdown](https://rmarkdown.rstudio.com/) is what I have used to produce this beautiful Notebook. We will learn more about it near the end of the course, but if you already feel ready to dive deep, here's a book: [R Markdown: The Definitive Guide, Yihui Xie, J. J. Allaire, Garrett Grolemunds.](https://bookdown.org/yihui/rmarkdown/) 
+
+
+
+***
+Goran S. Milovanović
+
+DataKolektiv, 2024.
+
+contact: goran.milovanovic@datakolektiv.com
+
+![](_img/DK_Logo_100.png)
+
+***
+License: [GPLv3](http://www.gnu.org/licenses/gpl-3.0.txt)
+This Notebook is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This Notebook is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this Notebook. If not, see <http://www.gnu.org/licenses/>.
+
+***
+
