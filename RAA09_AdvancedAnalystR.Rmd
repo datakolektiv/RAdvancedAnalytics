@@ -425,6 +425,7 @@ model <- nnet::multinom(Class ~ .,
                         data = data_set)
 summary(model)
 ```
+
 By exponentiating the coefficients, as in Binomial Logistic Regression, we can interpret the effect of each predictor on the odds of being in one category relative to the baseline category.
 
 ```{r echo = T}
