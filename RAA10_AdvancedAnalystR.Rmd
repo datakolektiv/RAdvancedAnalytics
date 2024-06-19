@@ -1,5 +1,5 @@
 ---
-title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session09"
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session10"
 author:
 - name: Goran S. Milovanović, PhD
   affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
@@ -111,7 +111,7 @@ We will keep only numerical features, excluding even all binary features:
 ```{r echo = T}
 column_dtypes <- sapply(data_set, class)
 numeric_features <- which(column_dtypes == "numeric")
-numeric_features <- colnames(data_set[, numeric_features])
+numeric_features <- colnames(data_set[ , numeric_features])
 numeric_features
 ```
 
@@ -194,7 +194,7 @@ kmeans(x, centers, iter.max = 10, nstart = 1, algorithm = "Hartigan-Wong", ...)
 ```{r echo = T}
 # K-Means Clustering w. kmeans()
 cluster_solution <- kmeans(model_frame_scaled,
-                           centers = 5, 
+                           centers = 3, 
                            iter.max = 100,
                            nstart = 10)
 # Centers
@@ -312,6 +312,135 @@ Let's delve deeper into the steps of the K-Means algorithm with some mathematica
 
 ## 3. Model Selection: how many clusters?
 
+### 3.1 Choosing Optimal Clusters via WCSS  and the Elbow method
+
+#### Understanding WCSS (Withing-Cluster Sum of Squares; The Within-SS in K-means Clustering)
+
+**WCSS** stands for "Within-Cluster Sum of Squares," which is a measure used in clustering algorithms like k-means to assess the variance or spread of data points within each cluster. Essentially, it quantifies how tightly grouped the data points are within each cluster. The goal of using WCSS in clustering scenarios, especially with k-means, is to minimize this value, as a lower WCSS indicates that the data points within each cluster are closer to their respective cluster centers, implying a better clustering solution.
+
+Here's a breakdown of the most important concepts to build your understanding of WCSS:
+
+1. **Cluster Center**: In k-means clustering, each cluster has a central point known as the "centroid." This point is typically the average of all the points in the cluster.
+
+2. **Sum of Squares**: For each data point in a cluster, calculate the square of the distance from that point to the cluster's centroid. This distance measures how far away each point is from the center.
+
+3. **Summing Up**: The "sum of squares" calculated for each point in a cluster is then summed up to get the total sum of squares for that cluster.
+
+4. **WCSS**: Finally, WCSS is the sum of these individual "sums of squares" for all clusters. It is the sum of all distances squared from each point to its respective cluster centroid, summed over all clusters.
+
+WCSS is particularly useful in methods like the "elbow method" where you plot WCSS against the number of clusters. The point where the rate of decrease in WCSS sharply changes (the "elbow") is considered a good choice for the number of clusters, as it represents a balance between having too many small clusters (overfitting) and too few large clusters (underfitting).
+
+```{r echo=T}
+# we need the cluster package
+library(cluster)
+library(ggrepel)
+
+# Define the range of clusters to try
+max_clusters <- 20
+wcss <- numeric(max_clusters)
+
+# Use sapply to compute WCSS for each number of clusters
+wcss <- sapply(1:max_clusters, function(x) {
+  kmeans_result <- kmeans(model_frame_scaled, 
+                          centers = x, 
+                          iter.max = 100,
+                          nstart = 25)
+  kmeans_result$tot.withinss
+})
+
+# Create a data frame for plotting
+elbow_data <- data.frame(Clusters = 1:max_clusters, WCSS = wcss)
+
+# Plotting the WCSS using ggplot2
+ggplot(elbow_data, aes(x = Clusters, y = WCSS, label = Clusters)) +
+  geom_line(color = "blue") +
+  geom_point(color = "blue") +
+  geom_text_repel() +
+  labs(title = "Elbow Method for Determining Optimal Number of Clusters",
+       x = "Number of Clusters", y = "WCSS") +
+  theme_minimal()
+```
+
+#### Understanding BCSS (Between-Cluster Sum of Squares; The Between-SS in K-means Clustering)
+
+**BCSS** stands for "Between-Cluster Sum of Squares." It's a measure used to assess the separation between different clusters in clustering algorithms such as k-means. Whereas WCSS (Within-Cluster Sum of Squares) focuses on the compactness of the clusters, BCSS measures how distinct or well-separated the clusters are from each other.
+
+### How BCSS is Calculated:
+
+1. **Cluster Centroids**: First, calculate the centroid for each cluster. This is usually the mean of all points in each cluster.
+2. **Global Centroid**: Calculate the overall centroid of the entire dataset, which is the mean of all data points across all clusters.
+3. **Distance Calculation**: For each cluster, calculate the squared distance between the cluster centroid and the global centroid, weighted by the number of points in the cluster.
+4. **Summing Up**: BCSS is the sum of these weighted squared distances for all clusters.
+
+**Total Variance**: In clustering analysis, the total variance in the dataset is partitioned into the variance within clusters (WCSS) and the variance between clusters (BCSS). The relationship can be summarized as:
+  
+  \[
+  \text{Total Variance} = \text{WCSS} + \text{BCSS}
+  \]
+
+### 3.2 Choosing Optimal Clusters via the Silhouette Method method
+
+The **silhouette method** measures how similar an object is to its own cluster compared to other clusters. The silhouette score ranges from -1 to 1, where a high value indicates that the object is well matched to its own cluster and poorly matched to neighboring clusters.
+
+In R, you can use the `silhouette()` function from the `cluster` package to compute the average silhouette width for various numbers of clusters and choose the number with the highest average silhouette score.
+
+**You want to maximize the average silhouette score**: the optimal number of clusters will typically be the one that has the highest average silhouette score across all data points. This suggests that on average, data points are more appropriately clustered, with a clearer distinction between different clusters.
+
+```{r echo=T}
+# Define the range of clusters to try
+max_clusters <- 20
+
+# Compute silhouette scores using sapply
+# the silhouette score cannot be compute for a one-cluster solution
+silhouette_scores <- sapply(2:max_clusters, function(x) {
+  kmeans_result <- kmeans(model_frame_scaled, 
+                          centers = x,
+                          iter.max = 100,
+                          nstart = 25)
+  sil_scores <- silhouette(kmeans_result$cluster, dist(model_frame_scaled))
+  return(
+    # average silhouette score
+    mean(sil_scores[, "sil_width"])
+  )
+})
+
+# Create a data frame for plotting
+silhouette_data <- data.frame(Clusters = 2:max_clusters, 
+                              Silhouette = silhouette_scores)
+
+# Plotting the silhouette scores using ggplot2
+ggplot(silhouette_data, aes(x = Clusters, y = Silhouette, label = Clusters)) +
+  geom_line(color = "blue") +
+  geom_point(color = "blue") +
+  geom_text_repel() +
+  labs(title = "Silhouette Method for Determining Optimal Number of Clusters",
+       x = "Number of Clusters", y = "Average Silhouette Score") +
+  theme_minimal()
+```
+
+Let's focus on the `silhouette()` function from the `cluster` package in R. This function is used to compute the silhouette widths for each data point in a dataset, given a clustering solution. **The silhouette width is a measure of how similar an object is to its own cluster compared to other clusters**, which helps in evaluating the effectiveness of the clustering. Let's break down the components of this line:
+
+```r
+sil_scores <- silhouette(kmeans_result$cluster, dist(model_frame_scaled))
+```
+
+1. **`kmeans_result$cluster`**: This part refers to the cluster assignments for each data point obtained from a previous `kmeans()` function call. `kmeans_result` is likely a variable that stores the output from the `kmeans()` function, and `kmeans_result$cluster` contains the cluster number to which each data point has been assigned.
+
+2. **`dist(model_frame_scaled)`**: This function calculates the distance matrix for the scaled data frame `model_frame_scaled`. The `dist()` function computes pairwise distances between the rows of the data frame, using a default method (typically Euclidean distance, but this can be changed based on the function's parameters).
+
+3. **`silhouette()`**: This function calculates the silhouette widths for each data point in the dataset. The silhouette width for a given data point is calculated using the following:
+
+   - **a**: The average distance between the data point and all other points in the same cluster.
+   - **b**: The lowest average distance of the data point to any other cluster, of which the data point is not a member.
+
+   The silhouette width is then defined as:
+   \[
+   s = \frac{b - a}{\max(a, b)}
+   \]
+   
+Here, `s` is the silhouette width. A value close to +1 indicates that the data point is well-matched to its own cluster and poorly matched to neighboring clusters. A value close to 0 indicates that the data point could possibly be assigned to another cluster, and a value close to -1 indicates that the data point is likely misplaced.
+   
+The term "average silhouette score" refers to the mean value of the silhouette widths for all the data points in a dataset, given a particular clustering configuration. This average gives a single measure that describes how well the data has been clustered overall. The silhouette width for each individual data point indicates how well that point fits within its cluster compared to how well it fits in neighboring clusters. By averaging these individual scores, you get an overall metric that reflects the cohesion and separation of the entire clustering model.
 
 ## 4. Case Study: Market Segmentation
 
@@ -329,12 +458,6 @@ The dataset contains information on approximately 9000 active credit cardholders
 2. **Data Standardization**: Standardize the data to ensure that all variables contribute equally to the clustering process.
 3. **K-Means Clustering**: Apply the K-Means clustering algorithm to segment the customers. Experiment with different numbers of clusters to find the optimal number.
 4. **Cluster Interpretation**: Analyze the characteristics of each cluster to understand the distinct customer segments. Summarize the key features of each cluster and provide recommendations for marketing strategies tailored to each segment.
-
-**Deliverables**:
-- A brief report summarizing your findings, including:
-  - An overview of the dataset and any preprocessing steps you took.
-  - The number of clusters you selected and why.
-  - Descriptions of each cluster and the characteristics that define them.
   
 Good luck, and happy clustering!
 
@@ -343,7 +466,6 @@ Good luck, and happy clustering!
 + [StatQuest w. Josh Starmer: K-means clustering](https://www.youtube.com/watch?v=4b5d3muPQmA)
 
 + [Wikipedia: K-means clustering](https://en.wikipedia.org/wiki/K-means_clustering)
-
 
 
 ### R Markdown

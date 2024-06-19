@@ -544,6 +544,7 @@ We will use the [Global Climate Change Data](https://data.world/data-society/glo
 data_set <- read_csv(paste0(data_dir, "GlobalTemperatures.csv"))
 head(data_set)
 ```
+
 There are some missing values in `LandAverageTemperature`:
 
 ```{r echo = T}
@@ -609,8 +610,6 @@ ts_model <- auto.arima(time_series)
 summary(ts_model)
 ```
 
-Certainly! Here is a complete tutorial-style interpretation of the provided output from the `auto.arima()` function in R:
-
 ### Interpretation of ARIMA Model Output
 
 **Series: time_series**
@@ -661,7 +660,7 @@ Certainly! Here is a complete tutorial-style interpretation of the provided outp
 Now, forecast:
 
 ```{r echo = T}
-forecasted_values <- forecast(ts_model, h = 128)
+forecasted_values <- forecast(ts_model, h = 120)
 print(forecasted_values)
 ```
 
@@ -670,7 +669,7 @@ print(forecasted_values)
 forecast_df <- data.frame(
   Date = seq(as.Date("2016-01-01"), 
              by = "month", 
-             length.out = 128),
+             length.out = 120),
   Forecast = forecasted_values$mean,
   Lo80 = forecasted_values$lower[,1],
   Hi80 = forecasted_values$upper[,1],
