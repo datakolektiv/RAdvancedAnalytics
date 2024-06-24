@@ -1,0 +1,397 @@
+---
+title: "ADVANCED ANALYST - Foundations for Advanced Data Analytics in R - Session11"
+author:
+- name: Goran S. Milovanović, PhD
+  affiliation: DataKolektiv, Chief Scientist & Owner; Lead Data Scientist for smartocto
+abstract: null
+output:
+  html_notebook:
+    code_folding: show
+    theme: spacelab
+    toc: true
+    toc_float: true
+    toc_depth: 5
+  html_document:
+    toc: true
+    toc_depth: 5
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+---
+
+![](_img/DK_Logo_100.png)
+
+***
+# Module 6: Advanced Supervise and Unsupervised Models
+
+## Week 11: Principal Components Analysis (PCA)
+
+### What do we want to do today?
+
+### Decoding Data Patterns with Principal Components Analysis (PCA)
+
+In this session, we explore the powerful technique of **Principal Components Analysis (PCA)**, an essential method in the toolkit of statistical learning and data analysis. PCA helps in uncovering the underlying patterns in data by transforming a large set of variables into a smaller one that still contains most of the information in the large set. This is particularly useful in reducing dimensionality, enhancing visualization, and increasing interpretative power while minimizing information loss.
+
+Using R, we will demonstrate how to perform PCA, interpret the principal components, and visualize them effectively. This session is designed to equip you with the skills to apply PCA in real-world scenarios where simplifying complex datasets is crucial for better analysis and decision-making.
+
+**Feedback** should be send to `goran.milovanovic@datakolektiv.com`. 
+
+These notebooks accompany the ADVANCED ANALYST - Foundations for Advanced Data Analytics in R [DataKolektiv](http://www.datakolektiv.com/app_direct/DataKolektivServer/) training.
+
+***
+
+### Welcome to R!
+
+![](_img/AdvAnalyticsR2024_Banner.jpeg)
+
+Setup:
+
+```{r echo = T}
+# Packages
+library(tidyverse)
+library(factoextra)
+
+# Directory Tree
+data_dir <- paste0(getwd(), "/_data/")
+```
+
+
+## 1. PCA in R
+
+We will use the [Customer Segmentation Dataset](https://www.kaggle.com/datasets/vishakhdapat/customer-segmentation-clustering) from Kaggle in this session. The `customer_segmentation.csv` should be found in your `_data` directory.
+
+Load the data:
+
+```{r echo = T}
+data_set <- read_csv(paste0(data_dir, "customer_segmentation.csv"))
+head(data_set)
+```
+
+### The Customer Segmentation Dataset
+
+This data set contains information on customer demographics, behavior, and marketing campaign responses. It is designed to facilitate analysis and segmentation of customers based on various attributes. Below are descriptions of each variable in the data set:
+
+#### Column Descriptions:
+
+### Customer Segmentation Data Set Overview
+
+This data set is ideal for conducting customer segmentation analysis, which can help in understanding customer behavior, tailoring marketing strategies, and improving customer satisfaction and retention.
+
+1. **ID**: Unique identifier for each customer.
+2. **Year_Birth**: Year of birth of the customer.
+3. **Education**: Educational qualification of the customer.
+4. **Marital_Status**: Marital status of the customer.
+5. **Income**: Annual income of the customer (in monetary units).
+6. **Kidhome**: Number of small children in the customer's household.
+7. **Teenhome**: Number of teenagers in the customer's household.
+8. **Dt_Customer**: Date of enrollment with the company.
+9. **Recency**: Number of days since the customer's last purchase.
+10. **MntWines**: Amount spent on wine in the last 2 years.
+11. **MntFruits**: Amount spent on fruits in the last 2 years.
+12. **MntMeatProducts**: Amount spent on meat products in the last 2 years.
+13. **MntFishProducts**: Amount spent on fish products in the last 2 years.
+14. **MntSweetProducts**: Amount spent on sweet products in the last 2 years.
+15. **MntGoldProds**: Amount spent on gold products in the last 2 years.
+16. **NumDealsPurchases**: Number of purchases made with a discount.
+17. **NumWebPurchases**: Number of purchases made through the company’s website.
+18. **NumCatalogPurchases**: Number of purchases made using a catalog.
+19. **NumStorePurchases**: Number of purchases made directly in stores.
+20. **NumWebVisitsMonth**: Number of visits to the company’s website in the last month.
+21. **AcceptedCmp3**: 1 if the customer accepted the offer in the 3rd campaign, 0 otherwise.
+22. **AcceptedCmp4**: 1 if the customer accepted the offer in the 4th campaign, 0 otherwise.
+23. **AcceptedCmp5**: 1 if the customer accepted the offer in the 5th campaign, 0 otherwise.
+24. **AcceptedCmp1**: 1 if the customer accepted the offer in the 1st campaign, 0 otherwise.
+25. **AcceptedCmp2**: 1 if the customer accepted the offer in the 2nd campaign, 0 otherwise.
+26. **Complain**: 1 if the customer has complained in the last 2 years, 0 otherwise.
+27. **Z_CostContact**: Cost per contact (constant across all customers).
+28. **Z_Revenue**: Revenue per contact (constant across all customers).
+29. **Response**: 1 if the customer accepted the offer in the last campaign, 0 otherwise.
+
+We will keep only numerical features, excluding even all binary features:
+
+```{r echo = T}
+column_dtypes <- sapply(data_set, class)
+numeric_features <- which(column_dtypes == "numeric")
+numeric_features <- colnames(data_set[ , numeric_features])
+numeric_features
+```
+
+Now, in line with our principle to always keep the original data set intact... 
+
+```{r echo = T}
+model_frame <- dplyr::select(data_set, all_of(numeric_features))
+head(model_frame)
+```
+
+And finally we will remove binary features from `model_frame`:
+
+```{r echo = T}
+binary_features <- sapply(model_frame, function(x) length(unique(x)))
+binary_features <- which(binary_features <= 2)
+binary_features <- colnames(model_frame[binary_features])
+binary_features
+```
+
+
+```{r echo = T}
+model_frame <- dplyr::select(model_frame, -all_of(binary_features))
+head(model_frame)
+```
+
+Let's transform `Year_Birth` to `Age`:
+
+```{r echo = T}
+model_frame$Age <- 2024 - model_frame$Year_Birth
+model_frame$Year_Birth <- NULL
+head(model_frame)
+```
+
+And finally, we do not really need the `ID` column:
+
+```{r echo = T}
+model_frame$ID <- NULL
+head(model_frame)
+```
+
+Keep only complete observations (no `NAs`):
+
+```{r echo = T}
+dim(model_frame)
+model_frame <- model_frame[complete.cases(model_frame), ]
+dim(model_frame)
+```
+
+### 1.1 PCA in R: the `prcomp()` function
+
+Principal Components Analysis (PCA) is a statistical technique used in data analysis to simplify complex datasets. It works by identifying patterns in data, focusing on the direction where the data varies the most. This helps to reduce the number of variables used in the analysis by creating new variables, called principal components. These components are fewer in number but still capture the most important information from the original dataset.
+
+The importance of PCA lies in its ability to reduce the complexity of data without losing critical information. This makes it easier to explore and visualize the data, speeds up other analytical processes, and often improves the performance of predictive models by eliminating irrelevant or redundant data. Essentially, PCA helps in making sense of large datasets, highlighting the most influential features, and facilitating better, more informed decision-making.
+
+**Scaling (or standardizing) data is crucial** before performing Principal Components Analysis (PCA), particularly when the variables span different scales. PCA relies on the covariance matrix to identify patterns in the data, and variables with larger scales can disproportionately influence the covariance, skewing the principal components derived from it. By scaling the data to a uniform scale, you ensure that each variable contributes equally to the analysis, leading to more reliable and interpretable results.
+
+We will use `prcomp()` to conduct the Principal Components Analysis in R for `model_frame`:
+
+```{r echo = T}
+# Perform PCA, automatically scaling and centering the data
+pca_result <- prcomp(model_frame, center = TRUE, scale. = TRUE)
+
+# Print summary of PCA
+summary(pca_result)
+```
+**N.B**. How many Principal Components were extracted from `model_frame`?
+
+We will rely on `factoextra` to visualize the results:
+
+```{r echo = T}
+# Plot the variance explained by each principal component
+factoextra::fviz_eig(pca_result)
+```
+
+
+The `prcomp()` function in R is used to perform Principal Components Analysis (PCA), a technique in unsupervised learning that reduces the dimensionality of a dataset while preserving as much variance as possible. It transforms the original variables into a new set of variables, called principal components, which are uncorrelated and ordered so that the first few retain most of the variation present in all of the original variables.
+
+#### Syntax:
+
+```
+prcomp(x, center = TRUE, scale. = FALSE, ...)
+```
+
+#### Arguments:
+
+- `x`: A numeric matrix or data frame of the data to be analyzed. The rows represent the observations, and the columns represent the variables.
+- `center`: A logical value indicating whether the variables should be shifted to be zero centered. Defaults to `TRUE`.
+- `scale.`: A logical value indicating whether the variables should be scaled to have unit variance before the analysis. Defaults to `FALSE`.
+- `...`: Additional arguments passed to or from other methods. These can include parameters like `tol` which specifies the tolerance for singular values to be considered non-zero, or `retx` which indicates whether the rotated variables should be returned.
+
+```{r echo = T}
+# Visualize the PCA
+# Using fviz_pca_ind from the factoextra package to plot individuals
+# Shows individuals in the space defined by PCA1 and PCA2
+fviz_pca_ind(pca_result,
+             geom = "point",    # Use only points for individuals
+             col.ind = "darkblue", # Uniform color for all points
+             legend = "none",   # Remove the legend
+             repel = TRUE       # Avoid text overlapping
+            )
+```
+
+**N.B**. Compare this scatter plot with the one we've used to visualize the results of K-Means Clustering in Session 10.
+
+## 2. (Some) Theory behind Principal Components Analysis
+
+### Clarification and Expansion
+
+**Principal Components Analysis (PCA)** is a powerful statistical technique that transforms a dataset with possibly correlated variables into a set of linearly uncorrelated variables called principal components. Here’s how and why this transformation is both useful and indeed accurate:
+
+1. **Handling Correlated Variables**: In many datasets, especially those in fields like finance, biology, or social sciences, the variables (or features) often show some degree of correlation. For example, in a dataset comprising health metrics, variables such as weight and cholesterol levels might be positively correlated.
+
+2. **Dimensionality Reduction**: The goal of PCA is not just to handle this correlation but to reorient the data into what can be envisioned as a new coordinate system. In this new system, the axes (i.e., the principal components) are orthogonal, meaning they are at right angles to each other, signifying no correlation among them.
+
+3. **Transforming the Space**: Initially, data points in your dataset can be imagined as vectors in a high-dimensional space, where dimensions correspond to features. When features are correlated, information redundancy exists. PCA finds new directions in this space, which are linear combinations of the original dimensions, where the data shows the most variance or spread. The first principal component captures the most variance, the second captures the next most under the constraint that it is orthogonal to the first, and so on.
+
+4. **Orthogonality of New Dimensions**: The key aspect here is the orthogonality of the new axes. In PCA, the orthogonality ensures that these new dimensions are uncorrelated. Each principal component is a direction in the original data space along which the projections of the data vary the most. Since these components are orthogonal, the variance captured by each component is unique to it, and by projecting data onto these components, PCA decorrelates the data.
+
+5. **Practical Utility**: This transformation is incredibly useful. For instance, in predictive modeling, using uncorrelated predictors often results in more stable and interpretable models. In data visualization, reducing a dataset to two or three principal components can allow us to plot high-dimensional data in two or three dimensions, revealing patterns that were not apparent in the original space.
+
+#### Now, slightly more technical...
+
+Here’s a simplified breakdown of how PCA works, incorporating some basic mathematical concepts:
+
+1. **Calculating the Covariance Matrix**: First, PCA computes the covariance matrix of the data. The covariance matrix captures how each pair of variables in the dataset varies together. For example, it helps us understand whether an increase in one variable generally corresponds with an increase or decrease in another.
+
+2. **Finding Eigenvalues and Eigenvectors**: PCA involves finding the eigenvalues and eigenvectors of this covariance matrix. Eigenvectors point in the direction of the largest variance of the data, where the data is most spread out; these are the principal components. Eigenvalues indicate the magnitude of these directions; in other words, how spread out the data is along these directions.
+
+3. **Transforming the Data**: Once we have the eigenvectors, the data is transformed by projecting it onto these eigenvectors. This results in a new dataset where the most significant variances are captured in the first few dimensions. Each new dimension is a linear combination of the original variables.
+
+4. **Dimensionality Reduction**: Typically, not all principal components are kept. Only those corresponding to the largest eigenvalues (which explain the most variance) are retained. This reduces the dimensionality of the data, simplifying its complexity while retaining the aspects that contribute most to its variance.
+
+### Mathematical Insight on Reconstruction:
+
+The essential insight needed to understand what PCA does is the following one: *the initial covariance matrix of the dataset at hand can be fully reconstructed from a linear combination of eigenvalues and eigenvectors*.
+
+This is done using a matrix operation called the spectral decomposition. The formula for this reconstruction is:
+
+\[
+\Sigma = Q \Lambda Q^T
+\]
+
+where \( \Sigma \) is the original covariance matrix, \( Q \) is the matrix of eigenvectors, \( \Lambda \) is the diagonal matrix of eigenvalues, and \( Q^T \) is the transpose of the matrix of eigenvectors. This equation essentially states that the covariance matrix is the product of the matrix of eigenvectors, the diagonal matrix of eigenvalues, and the transpose of the matrix of eigenvectors.
+
+### Importance of Scaling:
+
+Before performing PCA, it is crucial to scale the data. This is because PCA is affected by the scale of the variables. If one variable is scaled differently than another (e.g., one in thousands and another in millions), it may unduly influence the outcome. Scaling ensures that each variable contributes equally to the analysis, typically by standardizing each variable to have a mean of zero and a standard deviation of one.
+
+In summary, PCA reduces the complexity of data by transforming it into a new set of variables that highlight its most significant patterns. This process not only helps in visualizing and understanding the data better but also provides a robust foundation for further analyses.
+
+### Principal Component Scores
+
+Where are the original data points situated in the PCA solution?
+
+```{r echo = T}
+scores <- as.data.frame(pca_result$x)
+head(scores)
+```
+
+### Principal Component Loadins
+
+How are the initial variables (i.e. columns) in the data set related to principal components?
+
+```{r echo = T}
+loadings <- pca_result$rotation
+print(loadings)
+```
+
+- **High Loadings:** A high **absolute value** of a loading indicates that the variable strongly influences that principal component.
+
+- **Sign of Loadings:** The sign (+/-) of a loading indicates the direction of the correlation between the variable and the principal component. Positive values indicate a positive correlation, while negative values indicate a negative correlation.
+
+```{r echo = T}
+fviz_pca_biplot(pca_result,
+                geom_ind = "point",  # Use points to represent individuals
+                geom_var = "arrow",  # Use arrows to represent variables
+                col.ind = "darkblue", # Color for individuals
+                col.var = "darkorange", # Color for variable vectors
+                label = "var",       # Label only variables
+                arrow.size = 0.25    # Size of the arrows for variables
+)
+
+```
+
+The provided scatter plot is a biplot generated from a Principal Components Analysis (PCA). In this type of visualization, both the principal component scores of the observations (data points) and the loadings of the variables (arrows) are plotted together. Here’s a detailed explanation of what the arrows mean and how they relate to the data points and principal components:
+
+### Arrows (Vectors) Related to Variables
+
+1. **Meaning of Direction**:
+   - The direction of an arrow in a PCA biplot indicates the direction of the maximum variance for that variable in the context of the principal components displayed. 
+   - If two arrows are close to each other or point in similar directions, it suggests that those variables are positively correlated. If they point in opposite directions, the variables are negatively correlated.
+   - The direction relative to the principal component axes (Dim1 and Dim2 in your plot) shows how each variable contributes to each component. For example, if an arrow points mostly along Dim1, then that variable has a strong influence on the first principal component.
+
+2. **Meaning of Length**:
+   - The length of an arrow reflects the strength of the variable's contribution to the variance captured by the principal components shown in the plot. A longer arrow indicates that a significant proportion of that variable's variance is explained in the two-dimensional PCA space depicted. Conversely, a shorter arrow suggests that the variable is less well-represented by these two principal components.
+
+### Relationship to Original Data Points and Principal Components
+
+1. **Relationship to Original Data Points**:
+   - The projection of the data points along the direction of an arrow can be interpreted as the approximate values of that variable for the observations. For instance, data points that project far along the direction of the "Income" arrow are likely to have higher values for "Income".
+   - The spread of data points along these vectors also suggests variability in the dataset with respect to the corresponding variable.
+
+2. **Relationship to the Principal Components**:
+   - Each principal component is a linear combination of the original variables, with the coefficients (or loadings) for this combination given by the coordinates of the tips of the arrows. In simpler terms, the way arrows align with the principal component axes shows how each variable contributes to each component.
+   - The first principal component (Dim1) is designed to capture the maximum variance, so variables whose arrows align more directly with the Dim1 axis are more influential in this principal component. The second component (Dim2) captures the maximum remaining variance orthogonal to the first.
+
+
+## 3. Model Selection: how many components?
+
+Selecting the most important principal components is a crucial step in PCA because it determines the effectiveness of the dimensionality reduction. There are several widely used methods to decide how many principal components to retain:
+
+### 1. **Eigenvalue-One Criterion (Kaiser Criterion)**
+This method involves keeping only those principal components whose eigenvalues are greater than one. The rationale is that a principal component should explain more variance than a single original variable in standardized data (where each original variable explains a variance of one).
+
+### 2. **Scree Plot**
+
+A scree plot displays the eigenvalues associated with each principal component in descending order. By examining this plot, one looks for a "knee" or an "elbow," which is a point where the slope of the plot levels off. Components to the left of this point are considered significant, and those to the right are considered less important.
+
+```{r echo=TRUE}
+# Create a scree plot using fviz_eig showing all 16 components
+fviz_eig(pca_result, 
+         ncp = 16, 
+         addlabels = TRUE, 
+         ylim = c(0, 100))
+```
+
+## 4. Case Study: Market Segmentation
+
+We will use the [Market Segmentation in Insurance Unsupervised data set](https://www.kaggle.com/datasets/jillanisofttech/market-segmentation-in-insurance-unsupervised) from Kaggle; the `Customer Data.csv` file should already by in your `_data` directory.
+
+
+**Objective**:
+Your goal for this assignment is to develop a customer segmentation model using Principal Component Analysis (PCA). This will help identify distinct groups of credit cardholders based on their usage behavior over the last six months. By reducing the dimensionality of the dataset, PCA will allow us to uncover hidden patterns and simplify the dataset, facilitating clearer insights into customer behaviors. These insights will be instrumental in providing tailored recommendations such as saving plans, loans, and wealth management services to different customer groups.
+
+**Task**:
+
+1. **Data Exploration**: Start by exploring the dataset to understand the variables and their distributions. Identify any missing values and decide on an appropriate strategy for handling them.
+
+2. **Data Standardization**: Prior to applying PCA, standardize the data to ensure each variable contributes equally. This involves scaling each feature to have zero mean and unit variance.
+
+3. **Principal Component Analysis**: Perform PCA on the standardized data to reduce its dimensionality. Determine the number of principal components to retain by examining the scree plot and considering the cumulative variance explained.
+
+4. **Interpretation of Components**: Analyze the loadings of the principal components to understand which variables are most significant in differentiating customer behaviors. Interpret these components to uncover distinct patterns or profiles in customer usage behavior.
+
+5. **Recommendations and Strategy Development**: Based on the PCA results, develop insights into customer behaviors and suggest targeted marketing strategies for different segments identified through the PCA loadings.
+
+Enjoy uncovering the hidden structures within your data!
+
+---
+
+This version shifts the methodological focus from clustering to dimensionality reduction and pattern recognition through PCA, aligning the tasks and objectives with the capabilities and goals of PCA in exploratory data analysis.
+
+### Further Readings/Video:
+
++ [StatQuest w. Josh Starmer: K-means clustering](https://www.youtube.com/watch?v=4b5d3muPQmA)
+
++ [Wikipedia: K-means clustering](https://en.wikipedia.org/wiki/K-means_clustering)
+
+
+### R Markdown
+
+[R Markdown](https://rmarkdown.rstudio.com/) is what I have used to produce this beautiful Notebook. We will learn more about it near the end of the course, but if you already feel ready to dive deep, here's a book: [R Markdown: The Definitive Guide, Yihui Xie, J. J. Allaire, Garrett Grolemunds.](https://bookdown.org/yihui/rmarkdown/) 
+
+
+
+***
+Goran S. Milovanović
+
+DataKolektiv, 2024.
+
+contact: goran.milovanovic@datakolektiv.com
+
+![](_img/DK_Logo_100.png)
+
+***
+License: [GPLv3](http://www.gnu.org/licenses/gpl-3.0.txt)
+This Notebook is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This Notebook is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this Notebook. If not, see <http://www.gnu.org/licenses/>.
+
+***
+

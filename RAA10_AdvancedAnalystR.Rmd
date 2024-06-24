@@ -194,7 +194,7 @@ kmeans(x, centers, iter.max = 10, nstart = 1, algorithm = "Hartigan-Wong", ...)
 ```{r echo = T}
 # K-Means Clustering w. kmeans()
 cluster_solution <- kmeans(model_frame_scaled,
-                           centers = 3, 
+                           centers = 2, 
                            iter.max = 100,
                            nstart = 10)
 # Centers
