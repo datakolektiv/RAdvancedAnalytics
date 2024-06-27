@@ -367,9 +367,9 @@ This version shifts the methodological focus from clustering to dimensionality r
 
 ### Further Readings/Video:
 
-+ [StatQuest w. Josh Starmer: K-means clustering](https://www.youtube.com/watch?v=4b5d3muPQmA)
++ [StatQuest w. Josh Starmer: PCA main ideas in only 5 minutes!!!](https://www.youtube.com/watch?v=HMOI_lkzW08)
 
-+ [Wikipedia: K-means clustering](https://en.wikipedia.org/wiki/K-means_clustering)
++ [StatQuest w. Josh Starmer: Principal Component Analysis (PCA), Step-by-Step](https://www.youtube.com/watch?v=FgakZw6K1QQ)
 
 
 ### R Markdown
